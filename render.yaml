@@ -1,0 +1,27 @@
+# Blueprint de Render: servicio web Node (con WebSockets) + base de datos PostgreSQL.
+# En Render: New > Blueprint > elige este repositorio. Te pedirá el valor de ADMIN_INVITE_CODE.
+services:
+  - type: web
+    name: penalti-stars
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/meta
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: penalti-stars-db
+          property: connectionString
+      - key: ADMIN_INVITE_CODE
+        sync: false   # secreto: se introduce a mano en el panel de Render, nunca en el repositorio
+
+databases:
+  - name: penalti-stars-db
+    plan: free
+    databaseName: penalti_stars
+    user: penalti

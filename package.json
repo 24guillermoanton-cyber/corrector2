@@ -1,0 +1,25 @@
+{
+  "name": "penalti-stars",
+  "version": "1.0.0",
+  "description": "Juego web de fútbol: colecciona cartas, abre sobres y juega tandas de penaltis online contra tus amigos.",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "express": "^4.22.3",
+    "pg": "^8.23.1",
+    "socket.io": "^4.8.4"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
+  }
+}
