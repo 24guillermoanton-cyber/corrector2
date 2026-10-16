@@ -41,7 +41,11 @@ async function findFile(name) {
 
 const names = [...new Set(CARDS.map((c) => c.name))];
 const files = {};
-for (const name of names) {
+// --refresh: reutiliza los archivos ya elegidos y solo vuelve a pedir la miniatura (p. ej. a mayor resolución)
+if (process.argv.includes('--refresh') && fs.existsSync(OUT)) {
+  for (const [name, p] of Object.entries(JSON.parse(fs.readFileSync(OUT, 'utf8')))) files[name] = decodeURIComponent(p.file.split('File:')[1]);
+}
+for (const name of process.argv.includes('--refresh') ? [] : names) {
   const f = await findFile(name);
   if (f) files[name] = f;
   console.log(`${f ? '·' : '✖'} ${name}`);
@@ -53,7 +57,7 @@ const entries = Object.entries(files);
 for (let i = 0; i < entries.length; i += 40) {
   const batch = entries.slice(i, i + 40);
   const titles = batch.map(([, f]) => `File:${f}`).join('|');
-  const info = await get(`https://commons.wikimedia.org/w/api.php?action=query&format=json&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=420&titles=${encodeURIComponent(titles)}`);
+  const info = await get(`https://commons.wikimedia.org/w/api.php?action=query&format=json&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=1000&titles=${encodeURIComponent(titles)}`);
   await sleep(1500);
   if (!info) continue;
   const norm = new Map((info.query.normalized || []).map((n) => [n.to, n.from]));

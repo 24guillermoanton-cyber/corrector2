@@ -8,7 +8,7 @@
   --w: 160px; --ink: #fff; --glow: transparent; --tone: transparent;
   --chip: rgba(0, 0, 0, 0.35); --chip-ink: #fff;
   --shape: polygon(50% 0%, 60% 2.6%, 78% 2.6%, 86% 6.5%, 100% 6.5%, 100% 84%, 96% 89%, 64% 96%, 50% 100%, 36% 96%, 4% 89%, 0% 84%, 0% 6.5%, 14% 6.5%, 22% 2.6%, 40% 2.6%);
-  position: relative; flex: none; width: var(--w); aspect-ratio: 0.72; font-size: calc(var(--w) / 10);
+  position: relative; flex: none; width: var(--w); aspect-ratio: 0.64; font-size: calc(var(--w) / 10);
   color: var(--ink); user-select: none; transition: transform 0.2s;
   filter: drop-shadow(0 0.35em 0.45em rgba(0, 0, 0, 0.55)) drop-shadow(0 0 0.7em var(--glow));
 }
@@ -22,14 +22,14 @@
 
 /* ---- Foto a sangre: se funde con el fondo por abajo y por los lados ---- */
 .fcard .fc-photo {
-  position: absolute; left: 0; right: 0; top: 0; height: 64%; z-index: 1;
-  -webkit-mask-image: linear-gradient(180deg, #000 52%, transparent 97%), linear-gradient(90deg, transparent 0, #000 13%, #000 87%, transparent 100%);
+  position: absolute; left: 0; right: 0; top: 5%; height: 62%; z-index: 1;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 7%, #000 52%, transparent 97%), linear-gradient(90deg, transparent 0, #000 13%, #000 87%, transparent 100%);
   -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(180deg, #000 52%, transparent 97%), linear-gradient(90deg, transparent 0, #000 13%, #000 87%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 7%, #000 52%, transparent 97%), linear-gradient(90deg, transparent 0, #000 13%, #000 87%, transparent 100%);
   mask-composite: intersect;
 }
 .fcard .fc-photo img {
-  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 16%;
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0%;
   filter: saturate(1.12) contrast(1.06);
 }
 .fcard .fc-photo img.broken { display: none; }
@@ -59,24 +59,24 @@
   padding: 0.15em 0.5em; border-radius: 0.35em; background: var(--chip); color: var(--chip-ink);
 }
 .fcard .fc-name {
-  position: absolute; left: 5%; right: 5%; top: 59.5%; z-index: 3; text-align: center; font-family: var(--display);
+  position: absolute; left: 5%; right: 5%; top: 62%; z-index: 3; text-align: center; font-family: var(--display);
   font-size: calc(1.55em * var(--ns, 1)); line-height: 1; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   text-shadow: 0 0.05em 0.2em var(--name-shadow, rgba(0, 0, 0, 0.45));
 }
 .fcard .fc-stats {
-  position: absolute; left: 11%; right: 11%; top: 71%; z-index: 3; display: grid; grid-template-columns: repeat(3, 1fr); text-align: center;
+  position: absolute; left: 11%; right: 11%; top: 72.5%; z-index: 3; display: grid; grid-template-columns: repeat(3, 1fr); text-align: center;
   border-top: 0.06em solid color-mix(in srgb, var(--ink) 30%, transparent); padding-top: 0.18em;
 }
 .fcard .fc-stats div { display: flex; flex-direction: column; line-height: 1; }
 .fcard .fc-stats span { font-size: 0.52em; font-weight: 800; letter-spacing: 0.1em; opacity: 0.85; }
 .fcard .fc-stats b { font-family: var(--display); font-size: 1.42em; font-weight: 400; }
 .fcard .fc-foot {
-  position: absolute; left: 0; right: 0; top: 88.3%; z-index: 3; display: flex; justify-content: center; align-items: center; gap: 0.5em;
+  position: absolute; left: 0; right: 0; top: 88.6%; z-index: 3; display: flex; justify-content: center; align-items: center; gap: 0.5em;
   font-size: 0.44em; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85;
 }
 .fcard .fc-foot i { width: 0.5em; height: 0.5em; background: currentColor; transform: rotate(45deg); }
 .fcard .f-count {
-  position: absolute; right: 2%; bottom: 13%; z-index: 10; background: #0b1424; color: #fff; font-weight: 800; font-size: 0.68em;
+  position: absolute; right: 2%; bottom: 14%; z-index: 10; background: #0b1424; color: #fff; font-weight: 800; font-size: 0.68em;
   padding: 0.15em 0.5em; border-radius: 1em; border: 0.08em solid rgba(255, 255, 255, 0.4);
 }
 .fcard .f-sel { position: absolute; left: 50%; transform: translateX(-50%); bottom: -0.55em; z-index: 10; box-shadow: 0 0.1em 0.3em rgba(0,0,0,0.5); background: var(--accent); color: #031a0b; font-weight: 800; font-size: 0.58em; padding: 0.15em 0.55em; border-radius: 1em; }
