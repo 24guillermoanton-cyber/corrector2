@@ -383,6 +383,7 @@ function createMatch(app, ctx) {
     if (c.phase !== 'choose' || c.youChose || c.paused) return;
     selected = z;
     sfx.select();
+    ctx.emit('match:mark', { zone: z });
     zones.forEach((zb) => zb.classList.toggle('selected', Number(zb.dataset.z) === z));
     renderControls();
   }

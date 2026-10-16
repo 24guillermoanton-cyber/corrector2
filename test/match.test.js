@@ -180,13 +180,15 @@ test('segunda estirada del portero (reincorporación alta + disparo flojo)', asy
 
 test('la potencia reduce la ventana de la segunda estirada', async () => {
   const { secondDiveWindow } = await import('../server/match.js');
-  const keeper = { stats: { reincorporacion: 90 } };
+  const keeper = { tier: 'oro', stats: { reincorporacion: 90 } };
   const slow = secondDiveWindow(keeper, 50);
   const medium = secondDiveWindow(keeper, 70);
   const strong = secondDiveWindow(keeper, 85);
   assert.ok(slow > medium, 'disparo flojo = más tiempo');
   assert.equal(strong, 0, 'disparo potente = sin segunda estirada');
-  assert.equal(secondDiveWindow({ stats: { reincorporacion: 60 } }, 50), 0, 'reincorporación baja = sin segunda estirada');
+  assert.equal(secondDiveWindow({ tier: 'oro', stats: { reincorporacion: 60 } }, 50), 0, 'reincorporación baja = sin segunda estirada');
+  assert.equal(secondDiveWindow({ tier: 'plata', stats: { reincorporacion: 99 } }, 50), 0, 'portero de plata = sin segunda estirada');
+  assert.equal(secondDiveWindow({ tier: 'bronce', stats: { reincorporacion: 99 } }, 50), 0, 'portero de bronce = sin segunda estirada');
 });
 
 test('desconexión: pausa, reconexión y derrota si no vuelve', async () => {
@@ -224,4 +226,17 @@ test('salas: código inválido, sala llena y sin alineación', async () => {
   assert.match(nolineup.error, /alineación/);
   await call(sa, 'room:leave');
   a.closeAll(); b.closeAll(); c.closeAll(); d.closeAll();
+});
+
+test('si se acaba el tiempo, el balón va a la zona marcada (aunque no se confirme)', async () => {
+  const { a, b, sa, sb } = await pair();
+  await startRoom(a, sa, sb);
+  await waitFor(() => sa.last?.cur?.phase === 'choose' && !sa.last.cur.paused && sb.last?.cur?.phase === 'choose', { msg: 'primer lanzamiento' });
+  srv.rolls.push(0.5, 0.99);
+  await call(sa, 'match:mark', { zone: 3 }); // el lanzador marca "Media derecha" y no confirma
+  await call(sb, 'match:choose', { zone: 0 });
+  await waitFor(() => sa.results.length === 1, { msg: 'resultado por tiempo', timeout: 8000 });
+  assert.equal(sa.results[0].kick.zone, 3);
+  await call(sa, 'room:leave');
+  a.closeAll(); b.closeAll();
 });

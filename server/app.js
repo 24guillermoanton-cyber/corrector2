@@ -292,6 +292,7 @@ export function createApp({ db, rng, timing } = {}) {
     socket.on('room:leave', handle(async () => { await manager.leave(user); return {}; }));
     socket.on('room:state', handle(async () => ({ state: manager.stateFor(user.id) })));
     socket.on('match:choose', handle(async (p) => { manager.choose(user, p.zone); return {}; }));
+    socket.on('match:mark', handle(async (p) => { manager.mark(user, p.zone); return {}; }));
     socket.on('match:second', handle(async (p) => { manager.secondDive(user, p.zone); return {}; }));
     socket.on('disconnect', () => {
       manager.onDisconnect(user);

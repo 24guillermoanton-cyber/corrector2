@@ -109,7 +109,7 @@ Resolución (valores en `server/config.js → SHOT`):
 4. **Si se equivoca**: es gol, salvo que se active la segunda estirada.
 
 ### ⚡ Segunda estirada (reincorporación)
-Se activa si el portero se tiró al lugar equivocado, su **reincorporación ≥ 70** y la **potencia del disparo ≤ 80**. El portero ve una ventana breve para elegir otra dirección (la zona del disparo sigue oculta):
+Solo para porteros **de oro o superior** (bronce y plata no). Se activa si el portero se tiró al lugar equivocado, su **reincorporación ≥ 70** y la **potencia del disparo ≤ 80**. El portero ve una ventana breve para elegir otra dirección (la zona del disparo sigue oculta):
 
 - Duración = 700 ms + 55 ms × (reincorporación − potencia), entre 700 y 2400 ms (+ un pequeño margen por latencia). **Cuanto más potente el disparo, menos tiempo.**
 - Si acierta la zona, la probabilidad de parada es el 65 % de la normal.

@@ -74,6 +74,7 @@ export const SHOT = {
   },
   // Segunda estirada (reincorporación)
   second: {
+    tiers: ['oro', 'elite', 'toty', 'futties'], // solo porteros dorados o superiores (bronce y plata no)
     minRecovery: 70,      // reincorporación mínima del portero
     maxPower: 80,         // potencia máxima del disparo concreto
     baseMs: 700,          // ventana = baseMs + (reincorporación - potencia) * perPointMs

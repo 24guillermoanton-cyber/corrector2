@@ -38,6 +38,7 @@ export function saveChance(shooter, keeper, zone, power) {
 
 export function secondDiveWindow(keeper, power) {
   const s = SHOT.second;
+  if (!s.tiers.includes(keeper.tier)) return 0;
   if (keeper.stats.reincorporacion < s.minRecovery || power > s.maxPower) return 0;
   return clamp(Math.round(s.baseMs + (keeper.stats.reincorporacion - power) * s.perPointMs), s.minMs, s.maxMs);
 }
@@ -203,7 +204,7 @@ export function createMatchManager({ io, db, rng = Math.random, timing = MATCH }
   function startKick(room) {
     if (room.status !== 'playing') return;
     const side = room.kicks.length % 2;
-    room.cur = { side, phase: 'choose', shot: null, dive: null, dive2: null, deadline: now() + T.chooseMs };
+    room.cur = { side, phase: 'choose', shot: null, dive: null, dive2: null, marked: {}, deadline: now() + T.chooseMs };
     if (anyDisconnected(room)) {
       room.cur.paused = true;
       room.cur.pausedRemaining = T.chooseMs;
@@ -218,6 +219,7 @@ export function createMatchManager({ io, db, rng = Math.random, timing = MATCH }
     if (!c || c.phase !== 'choose' || room.status !== 'playing') return;
     // Quien no elige a tiempo recibe una elección aleatoria. Tres tiempos agotados seguidos = abandono.
     for (const [key, uid] of [['shot', room.order[c.side]], ['dive', room.order[1 - c.side]]]) {
+      if (c[key] == null && c.marked?.[key] != null) { c[key] = c.marked[key]; continue; }
       if (c[key] == null) {
         c[key] = crypto.randomInt(0, 6);
         const p = room.players[uid];
@@ -240,6 +242,18 @@ export function createMatchManager({ io, db, rng = Math.random, timing = MATCH }
     c[key] = zone;
     room.players[user.id].afk = 0;
     if (c.shot != null && c.dive != null) { clearTimer(room); resolveFirst(room); } else broadcast(room);
+  }
+
+  // Zona marcada sin confirmar: se guarda para usarla si se acaba el tiempo.
+  function mark(user, zone) {
+    const room = rooms.get(userRoom.get(user.id));
+    const c = room?.cur;
+    if (!room || room.status !== 'playing' || !c || c.phase !== 'choose' || c.paused) return;
+    if (!Number.isInteger(zone) || zone < 0 || zone > 5) return;
+    const key = user.id === room.order[c.side] ? 'shot' : 'dive';
+    if (c[key] != null) return;
+    c.marked[key] = zone;
+    room.players[user.id].afk = 0;
   }
 
   function resolveFirst(room) {
@@ -403,7 +417,7 @@ export function createMatchManager({ io, db, rng = Math.random, timing = MATCH }
   }
 
   return {
-    createRoom, joinRoom, choose, secondDive, leave, onConnect, onDisconnect, kickUser, stateFor,
+    createRoom, joinRoom, choose, mark, secondDive, leave, onConnect, onDisconnect, kickUser, stateFor,
     isOnline, onlineIds: () => [...online.keys()],
     setRandom(fn) { random = fn; },
     _rooms: rooms,
