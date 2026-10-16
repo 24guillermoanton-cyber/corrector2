@@ -166,57 +166,6 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .stat b { display: block; font-family: var(--display); font-size: 2rem; letter-spacing: 0.04em; font-weight: 400; }
 .stat span { color: var(--muted); font-size: 0.85rem; font-weight: 700; }
 
-/* =====================================================================
-   CARTAS
-   ===================================================================== */
-.fcard { --w: 160px; --c1: #c98a4b; --c2: #7a4a20; --ink: #2b1606; --glow: transparent;
-  position: relative; width: var(--w); aspect-ratio: 0.72; font-size: calc(var(--w) / 10); border-radius: 0.9em 0.9em 1.6em 1.6em;
-  background: linear-gradient(160deg, var(--c1), var(--c2)); color: var(--ink); overflow: hidden; flex: none;
-  box-shadow: 0 0.4em 1.2em rgba(0,0,0,0.5), 0 0 1.4em var(--glow), inset 0 0 0 0.12em rgba(255,255,255,0.35);
-  user-select: none; transition: transform .2s; }
-.fcard::before { content: ''; position: absolute; inset: 0.32em; border-radius: 0.7em 0.7em 1.4em 1.4em; border: 0.08em solid rgba(255,255,255,0.45); pointer-events: none; }
-.fcard::after { content: ''; position: absolute; inset: -50%; background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.35) 50%, transparent 60%); transform: translateX(-60%); pointer-events: none; }
-.fcard.shine::after, .fcard.t-elite::after, .fcard.t-toty::after, .fcard.t-futties::after { animation: shine 3.2s ease-in-out infinite; }
-.fcard .f-top { position: absolute; left: 0.7em; top: 0.75em; display: flex; flex-direction: column; align-items: center; line-height: 0.9; z-index: 2; }
-.fcard .f-rating { font-family: var(--display); font-size: 2.6em; }
-.fcard .f-pos { font-family: var(--display); font-size: 1.15em; letter-spacing: 0.05em; }
-.fcard .f-nat { margin-top: 0.3em; font-size: 0.62em; font-weight: 800; letter-spacing: 0.05em; padding: 0.1em 0.35em; border-radius: 0.3em; background: rgba(0,0,0,0.18); }
-.fcard .f-cat { position: absolute; right: 0.7em; top: 0.85em; font-family: var(--display); font-size: 0.95em; letter-spacing: 0.08em; padding: 0.1em 0.45em; border-radius: 0.3em; background: rgba(0,0,0,0.22); z-index: 2; }
-.fcard .f-art { position: absolute; left: 12%; right: 12%; top: 13%; height: 46%; display: grid; place-items: center; }
-.fcard .f-art svg { width: 100%; height: 100%; filter: drop-shadow(0 0.2em 0.3em rgba(0,0,0,0.35)); }
-.fcard .f-name { position: absolute; left: 0.4em; right: 0.4em; top: 59%; text-align: center; font-family: var(--display); font-size: 1.45em; letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 0.06em solid rgba(0,0,0,0.25); padding-bottom: 0.1em; }
-.fcard .f-stats { position: absolute; left: 0.6em; right: 0.6em; top: 72%; display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; }
-.fcard .f-stats div { display: flex; flex-direction: column; line-height: 1.05; }
-.fcard .f-stats b { font-family: var(--display); font-size: 1.5em; font-weight: 400; }
-.fcard .f-stats span { font-size: 0.6em; font-weight: 800; letter-spacing: 0.06em; opacity: 0.8; }
-.fcard .f-type { position: absolute; bottom: 0.65em; left: 0; right: 0; text-align: center; font-size: 0.58em; font-weight: 800; letter-spacing: 0.12em; opacity: 0.75; }
-.fcard .f-count { position: absolute; right: 0.5em; bottom: 0.5em; background: #0b1424; color: #fff; font-weight: 800; font-size: 0.7em; padding: 0.15em 0.5em; border-radius: 1em; z-index: 3; }
-.fcard .f-sel { position: absolute; left: 0.5em; bottom: 0.5em; background: var(--accent); color: #031a0b; font-weight: 800; font-size: 0.6em; padding: 0.15em 0.5em; border-radius: 1em; z-index: 3; }
-
-.fcard.t-bronce { --c1: #e0a571; --c2: #8a5428; --ink: #2d1606; }
-.fcard.t-plata  { --c1: #f2f5f8; --c2: #9aa5b1; --ink: #1d2733; }
-.fcard.t-oro    { --c1: #fff1a8; --c2: #d9a400; --ink: #3a2a00; }
-.fcard.t-elite  { --c1: #3a3220; --c2: #0d0b06; --ink: #ffd86b; --glow: rgba(255, 196, 0, 0.35);
-  background: radial-gradient(circle at 70% 15%, rgba(255,215,90,0.35), transparent 45%), linear-gradient(160deg, #2b2416, #0b0904 70%); }
-.fcard.t-elite::before { border-color: rgba(255, 210, 90, 0.7); }
-.fcard.t-toty { --ink: #f3f8ff; --glow: rgba(47, 123, 255, 0.65);
-  background: radial-gradient(circle at 50% 30%, rgba(120,190,255,0.5), transparent 55%),
-              repeating-conic-gradient(from 0deg at 50% 32%, rgba(255,255,255,0.06) 0 8deg, transparent 8deg 16deg),
-              linear-gradient(165deg, #1a5cff, #0a1f7a 55%, #04082e); }
-.fcard.t-toty::before { border-color: rgba(255, 215, 90, 0.85); box-shadow: inset 0 0 1em rgba(120,190,255,0.5); }
-.fcard.t-toty .f-cat { background: linear-gradient(180deg, #ffe27a, #e0a800); color: #1a1200; }
-.fcard.t-futties { --ink: #fff4fb; --glow: rgba(255, 63, 164, 0.65);
-  background: radial-gradient(circle at 30% 20%, rgba(255,200,240,0.55), transparent 45%),
-              radial-gradient(circle at 80% 70%, rgba(150,80,255,0.55), transparent 50%),
-              linear-gradient(160deg, #ff4fb0, #b0127a 55%, #4c0a5c); }
-.fcard.t-futties::before { border-color: rgba(255, 255, 255, 0.8); }
-.fcard.t-futties .f-cat { background: #fff; color: #c2127f; }
-.fcard .sparkles { position: absolute; inset: 0; pointer-events: none; z-index: 1;
-  background-image: radial-gradient(circle, rgba(255,255,255,0.95) 0 1px, transparent 2px), radial-gradient(circle, rgba(255,255,255,0.7) 0 1px, transparent 2px);
-  background-size: 23% 19%, 31% 27%; background-position: 10% 20%, 60% 70%; animation: twinkle 2.4s ease-in-out infinite alternate; }
-.fcard.missing { filter: grayscale(1) brightness(0.35); }
-.fcard.clickable { cursor: pointer; }
-.fcard.clickable:hover { transform: translateY(-4px) scale(1.02); }
 
 .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px; justify-items: center; }
 .card-grid .fcard { --w: 150px; }
@@ -489,56 +438,6 @@ table.table { width: 100%; border-collapse: collapse; }
 }
 .cta-grid { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
 
-/* =====================================================================
-   FOTOS DE JUGADORES (Wikimedia Commons, licencias libres)
-   ===================================================================== */
-.fcard .f-art.has-photo { left: 26%; right: 4%; top: 15%; height: 44%; }
-.fcard .f-art.has-photo > svg { display: none; }
-.fcard .f-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%;
-  border-radius: 0.5em; -webkit-mask-image: linear-gradient(180deg, #000 72%, transparent);
-  mask-image: linear-gradient(180deg, #000 72%, transparent); filter: saturate(1.08) contrast(1.04); }
-.fcard .f-photo.broken { display: none; }
-.fcard.t-toty .f-photo { filter: saturate(1.15) contrast(1.06) drop-shadow(0 0 0.4em rgba(80, 160, 255, 0.8)); }
-.fcard.t-futties .f-photo { filter: saturate(1.2) contrast(1.05) drop-shadow(0 0 0.4em rgba(255, 80, 180, 0.8)); }
-.fcard.t-elite .f-photo { filter: saturate(1.05) drop-shadow(0 0 0.35em rgba(255, 200, 60, 0.6)); }
-.credit { font-size: 0.8rem; color: var(--muted); }
-.credit a { color: #9cc6ff; }
-
-/* =====================================================================
-   EFECTOS ESPECIALES: TOTY (azul) y FUTTIES (rosa)
-   ===================================================================== */
-@property --ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-.fcard .fx { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; }
-.fcard .fx-aura { z-index: 0; opacity: 0.85; mix-blend-mode: screen; background-size: 300% 300%; animation: aura 6s ease-in-out infinite; }
-.fcard .fx-holo { z-index: 4; mix-blend-mode: overlay; opacity: 0.55;
-  background: radial-gradient(circle at var(--mx, 30%) var(--my, 20%), rgba(255,255,255,0.9), transparent 38%),
-              linear-gradient(115deg, transparent 20%, rgba(255,0,170,0.35), rgba(0,200,255,0.35), rgba(255,240,0,0.35), transparent 80%);
-  background-size: 100% 100%, 250% 250%; animation: holo 4s linear infinite; opacity: 0.38; }
-.fcard .fx-ring { z-index: 5; padding: 0.16em;
-  background: conic-gradient(from var(--ang), var(--r1), var(--r2), var(--r3), var(--r1), var(--r2), var(--r1));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); animation: ringSpin 2.6s linear infinite; }
-.fcard .fx-parts { z-index: 3; overflow: hidden; }
-.fcard .fx-parts i { position: absolute; left: var(--x); bottom: -1em; width: var(--s); height: var(--s); opacity: 0;
-  animation: floatUp var(--t) ease-in var(--d) infinite; }
-
-.fcard.t-toty { --r1: #ffd54a; --r2: #2f7bff; --r3: #bfe3ff; animation: glowToty 2.4s ease-in-out infinite; }
-.fcard.t-toty .fx-aura { background-image: linear-gradient(120deg, rgba(20,80,255,0.0), rgba(60,140,255,0.55), rgba(255,215,90,0.35), rgba(20,80,255,0.0)); }
-.fcard.t-toty .fx-parts i { background: #fff6c2; box-shadow: 0 0 0.5em #ffd54a, 0 0 1em #2f7bff;
-  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
-
-.fcard.t-futties { --r1: #ff3fa4; --r2: #fff; --r3: #b46bff; animation: glowFutties 2s ease-in-out infinite; }
-.fcard.t-futties .fx-aura { background-image: linear-gradient(120deg, rgba(255,60,170,0), rgba(255,120,210,0.6), rgba(180,100,255,0.55), rgba(255,60,170,0)); }
-.fcard.t-futties .fx-parts i { background: #ffd1ec; box-shadow: 0 0 0.6em #ff3fa4;
-  clip-path: path('M5 9 L1 5 A2.3 2.3 0 0 1 5 1.8 A2.3 2.3 0 0 1 9 5 Z'); width: 10px; height: 10px; }
-.fcard.t-futties .fx-parts i:nth-child(odd) { clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); background: #fff; width: var(--s); height: var(--s); }
-
-@keyframes ringSpin { to { --ang: 360deg; } }
-@keyframes aura { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-@keyframes holo { to { background-position: 0 0, 250% 250%; } }
-@keyframes floatUp { 0% { transform: translateY(0) scale(0.6) rotate(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(-14em) scale(1.1) rotate(180deg); opacity: 0; } }
-@keyframes glowToty { 0%, 100% { box-shadow: 0 0.4em 1.2em rgba(0,0,0,0.5), 0 0 1em rgba(47,123,255,0.55); } 50% { box-shadow: 0 0.4em 1.2em rgba(0,0,0,0.5), 0 0 2.4em rgba(47,123,255,0.95), 0 0 0.8em rgba(255,213,74,0.6); } }
-@keyframes glowFutties { 0%, 100% { box-shadow: 0 0.4em 1.2em rgba(0,0,0,0.5), 0 0 1em rgba(255,63,164,0.55); } 50% { box-shadow: 0 0.4em 1.2em rgba(0,0,0,0.5), 0 0 2.4em rgba(255,63,164,0.95), 0 0 0.8em rgba(180,107,255,0.7); } }
 
 /* Apertura de sobres: escenario especial para TOTY y FUTTIES */
 .opening.special-toty, .opening.special-futties { animation: stageShake 0.5s ease-in-out 2; }
