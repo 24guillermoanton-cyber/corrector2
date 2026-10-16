@@ -1,5 +1,5 @@
 // Penalti Stars — cliente. Navegación, pantallas y comunicación con el servidor.
-import { $, $$, esc, crestSVG, cardHTML, statBars, toast, modal, confirmModal, TIER_NAMES, TIER_ORDER, STAT_NAMES } from './ui.js';
+import { $, $$, esc, crestSVG, cardHTML, statBars, toast, modal, confirmModal, setPhotos, photoCredit, TIER_NAMES, TIER_ORDER, STAT_NAMES } from './ui.js';
 import { sfx, isMuted, setMuted } from './sound.js';
 import { openPackAnimation } from './pack.js';
 import { renderSala } from './match.js';
@@ -306,7 +306,8 @@ routes.coleccion = () => {
   try { Object.assign(f, JSON.parse(sessionStorage.getItem('ps-filters') || '{}')); } catch { /* nada */ }
   app.innerHTML = `<div class="fade-in">
     <div class="screen-title"><div><h1>Colección</h1><p class="muted" id="col-sum"></p></div>
-      <button class="btn btn-gold btn-sm" id="sell-all">💰 Vender todas las repetidas</button></div>
+      <div class="row"><a class="btn btn-sm" href="#/creditos">📷 Créditos de fotos</a>
+      <button class="btn btn-gold btn-sm" id="sell-all">💰 Vender todas las repetidas</button></div></div>
     <div class="panel" style="margin-bottom:16px"><div class="filters">
       <select id="f-type"><option value="todos">Todos</option><option value="jugador">Lanzadores</option><option value="portero">Porteros</option></select>
       <select id="f-tier"><option value="todas">Todas las categorías</option>${TIER_ORDER.map((t) => `<option value="${t}">${TIER_NAMES[t]}</option>`).join('')}</select>
@@ -372,6 +373,7 @@ function cardDetail(cardId, redraw) {
         <p class="muted" style="margin-top:4px">${c.type === 'portero' ? 'Portero' : 'Lanzador'} · ${esc(c.position)} · ${esc(c.nation)} · ${TIER_NAMES[c.tier]} · Media ${c.rating}</p>
         ${statBars(c)}
         <p class="muted" style="font-size:.85rem">${c.type === 'portero' ? 'La media de un portero representa su capacidad para parar penaltis.' : 'La media de un lanzador representa sobre todo lo bien que tira penaltis.'} Valoraciones orientativas de juego.</p>
+        <p class="credit">${photoCredit(c)}</p>
         <p><b>Copias:</b> ${own?.count || 0}</p>
         <div class="row">
           ${isStarter ? '<span class="chip">✔ Titular</span>' : `<button class="btn btn-primary" id="set-starter">${c.type === 'portero' ? '🧤 Poner como portero' : '⚽ Poner como lanzador'}</button>`}
@@ -605,6 +607,15 @@ function showTutorial(firstTime) {
   });
   return m;
 }
+routes.creditos = () => {
+  const list = [...new Map([...state.cards.values()].map((c) => [c.name, c])).values()]
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  app.innerHTML = `<div class="fade-in panel"><h1>📷 Créditos de las fotos</h1>
+    <p class="muted">Las fotos proceden de Wikimedia Commons y se usan según su licencia libre (Creative Commons o dominio público), citando autor y licencia.
+    Las valoraciones de las cartas son orientativas de juego. Proyecto sin afiliación con clubes, ligas, EA SPORTS ni FIFA.</p>
+    <ul class="history">${list.map((c) => `<li><b style="min-width:180px">${esc(c.name)}</b><span class="credit">${photoCredit(c)}</span></li>`).join('')}</ul></div>`;
+};
+
 routes.tutorial = () => {
   app.innerHTML = `<div class="fade-in panel" style="max-width:860px;margin:0 auto">${tutorialHTML()}
     <div class="modal-actions"><a class="btn btn-primary" href="#/sala">Jugar ahora</a></div></div>`;
@@ -619,7 +630,9 @@ document.addEventListener('click', (e) => { if (e.target.closest('.btn, .nav a')
 (async function boot() {
   app.innerHTML = '<div class="spinner" style="margin-top:30vh"></div>';
   try {
-    const [meta, { cards }] = await Promise.all([api('GET', '/api/meta'), api('GET', '/api/cards')]);
+    const [meta, { cards }, photos] = await Promise.all([api('GET', '/api/meta'), api('GET', '/api/cards'),
+      fetch('/data/photos.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({}))]);
+    setPhotos(photos);
     state.meta = meta;
     for (const c of cards) state.cards.set(c.id, c);
   } catch {

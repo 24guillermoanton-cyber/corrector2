@@ -29,7 +29,7 @@ export function createApp({ db, rng, timing } = {}) {
     res.setHeader('Referrer-Policy', 'same-origin');
     res.setHeader('Content-Security-Policy', [
       "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com", "img-src 'self' data:", "connect-src 'self' ws: wss:",
+      "font-src 'self' https://fonts.gstatic.com", "img-src 'self' data: https://upload.wikimedia.org https://thumb.wikimedia.org", "connect-src 'self' ws: wss:",
       "frame-ancestors 'none'", "base-uri 'self'", "form-action 'self'",
     ].join('; '));
     next();

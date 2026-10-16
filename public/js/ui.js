@@ -109,6 +109,42 @@ function natCode(n) {
   return (NATION_CODES[n] = (c.length > 1 && c[0].length <= 3 ? c.map((w) => w[0]).join('') : c[0].slice(0, 3)).toUpperCase().slice(0, 3));
 }
 
+// Fotos con licencia libre (Wikimedia Commons). Se cargan desde /data/photos.json.
+let PHOTOS = {};
+export function setPhotos(map) { PHOTOS = map || {}; }
+export const photoOf = (card) => card && PHOTOS[card.name];
+export function photoCredit(card) {
+  const p = photoOf(card);
+  if (!p) return '<span class="muted">Ilustración propia (no hay foto con licencia libre disponible).</span>';
+  const lic = p.licenseUrl ? `<a href="${esc(p.licenseUrl)}" target="_blank" rel="noopener">${esc(p.license)}</a>` : esc(p.license);
+  return `Foto: <a href="${esc(p.file)}" target="_blank" rel="noopener">${esc(p.author)}</a>, ${lic}, vía Wikimedia Commons`;
+}
+// Si una foto no carga, se ve la ilustración propia que hay debajo.
+document.addEventListener('error', (e) => {
+  if (!e.target.classList?.contains('f-photo')) return;
+  e.target.classList.add('broken');
+  e.target.parentElement?.classList.remove('has-photo');
+}, true);
+
+// Capas de efectos de las cartas especiales (aura, holograma, partículas y borde giratorio)
+function specialFx(tier) {
+  const n = tier === 'toty' ? 9 : 10;
+  let parts = '';
+  for (let i = 0; i < n; i++) {
+    parts += `<i style="--x:${((i * 37 + 11) % 92) + 4}%;--d:${((i * 0.73) % 3).toFixed(2)}s;--t:${(2.6 + (i % 4) * 0.5).toFixed(1)}s;--s:${(0.5 + (i % 3) * 0.22).toFixed(2)}em"></i>`;
+  }
+  return `<div class="fx fx-aura"></div><div class="fx fx-holo"></div><div class="fx fx-parts">${parts}</div><div class="fx fx-ring"></div>`;
+}
+
+// El brillo holográfico de las especiales sigue al puntero
+document.addEventListener('pointermove', (e) => {
+  const c = e.target.closest?.('.fcard.t-toty, .fcard.t-futties');
+  if (!c) return;
+  const r = c.getBoundingClientRect();
+  c.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
+  c.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
+});
+
 export function cardHTML(card, { count, selected, extraClass = '', missing = false, attrs = '' } = {}) {
   if (!card) return '';
   card = { ...card, type: card.type || (card.position === 'POR' ? 'portero' : 'jugador') };
@@ -116,10 +152,12 @@ export function cardHTML(card, { count, selected, extraClass = '', missing = fal
   const special = card.tier === 'toty' || card.tier === 'futties';
   return `<div class="fcard t-${card.tier} ${extraClass} ${missing ? 'missing' : ''}" data-card="${esc(card.id)}" ${attrs}
       title="${esc(card.name)} · ${card.rating} · ${TIER_NAMES[card.tier]}">
-    ${special ? '<div class="sparkles"></div>' : ''}
+    ${special ? specialFx(card.tier) + '<div class="sparkles"></div>' : ''}
     <div class="f-top"><span class="f-rating">${card.rating}</span><span class="f-pos">${esc(card.position)}</span><span class="f-nat">${esc(natCode(card.nation))}</span></div>
     <div class="f-cat">${TIER_NAMES[card.tier]}</div>
-    <div class="f-art">${portraitSVG(card)}</div>
+    ${photoOf(card)
+    ? `<div class="f-art has-photo">${portraitSVG(card)}<img class="f-photo" src="${esc(photoOf(card).src)}" alt="" loading="lazy" referrerpolicy="no-referrer" draggable="false"></div>`
+    : `<div class="f-art">${portraitSVG(card)}</div>`}
     <div class="f-name" style="${card.name.length > 17 ? 'font-size:1.05em' : card.name.length > 13 ? 'font-size:1.22em' : ''}">${esc(card.name)}</div>
     <div class="f-stats">${stats}</div>
     <div class="f-type">${card.type === 'portero' ? 'PORTERO' : 'LANZADOR'}</div>
