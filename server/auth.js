@@ -25,8 +25,13 @@ export async function verifyPassword(password, stored) {
 }
 
 // Comparación en tiempo constante del código de administrador (nunca sale del servidor).
+// Limpia espacios y comillas que se cuelan al pegar el valor en el panel de Render.
+export function adminSecret() {
+  return (process.env.ADMIN_INVITE_CODE || '').trim().replace(/^(["'])(.*)\1$/, '$2').trim();
+}
+
 export function adminCodeMatches(input) {
-  const secret = process.env.ADMIN_INVITE_CODE;
+  const secret = adminSecret();
   if (!secret || typeof input !== 'string' || !input) return false;
   const a = crypto.createHash('sha256').update(input).digest();
   const b = crypto.createHash('sha256').update(secret).digest();

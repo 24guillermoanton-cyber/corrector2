@@ -1,14 +1,17 @@
 // Punto de entrada: node server/index.js
 import { openDb } from './db.js';
 import { createApp } from './app.js';
+import { adminSecret } from './auth.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 
 const db = await openDb({ databaseUrl: process.env.DATABASE_URL, dataDir: process.env.DATA_DIR });
 const { server, close } = createApp({ db });
 
-if (!process.env.ADMIN_INVITE_CODE) {
+if (!adminSecret()) {
   console.warn('[aviso] ADMIN_INVITE_CODE no está definida: nadie podrá obtener el rol de administrador.');
+} else {
+  console.log(`[admin] ADMIN_INVITE_CODE cargada (${adminSecret().length} caracteres)`);
 }
 console.log(process.env.DATABASE_URL
   ? '[bd] Usando PostgreSQL (DATABASE_URL)'
