@@ -520,3 +520,13 @@ table.table { width: 100%; border-collapse: collapse; }
 @keyframes dotIn { from { transform: translate(-50%, -50%) scale(0); } }
 @keyframes dotPulse { 50% { box-shadow: 0 0 0 12px rgba(255, 255, 255, 0.2), 0 0 32px #ffd54a; } }
 @keyframes doublePop { from { transform: scale(0.3); opacity: 0; } }
+
+/* ---- Mercado de transferibles ---- */
+.mk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.mk-item { display: flex; gap: 12px; align-items: center; margin: 0; padding: 12px; }
+.mk-item .fcard { flex: none; }
+.mk-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; font-size: .95rem; }
+.mk-info input { padding: 6px 8px; }
+.pack-art.tradable { outline: 3px dashed #27e36f; outline-offset: -8px; }
+.pack-art .pk-trade { position: absolute; top: 28px; left: 0; right: 0; font-size: .62rem; font-weight: 900; letter-spacing: .08em; color: #27e36f; text-shadow: 0 1px 2px #000; }
+@media (max-width: 420px) { .mk-grid { grid-template-columns: 1fr; } }

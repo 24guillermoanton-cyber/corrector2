@@ -10,7 +10,7 @@ export const ECONOMY = {
   abandonReward: 0,        // monedas para quien abandona o se desconecta
   // Venta rápida de cartas repetidas (solo copias sobrantes)
   quickSell: { bronce: 10, plata: 25, oro: 60, elite: 120, toty: 300, futties: 300, icono: 5000 },
-  adminMaxCoinsAdjust: 1_000_000,
+  adminMaxCoinsAdjust: 10_000_000,
 };
 
 // Categorías de carta. Las normales dependen de la media.
@@ -38,6 +38,21 @@ export const PACKS = [
   { id: 'icono', name: 'Sobre Icono', price: 500000,
     odds: { icono: 100 } },
 ];
+// Copia transferible de cada sobre: mismas probabilidades, el doble de precio, y sus
+// cartas se pueden vender en el mercado de transferibles.
+PACKS.push(...PACKS.map((p) => ({ ...p, id: `${p.id}-t`, name: `${p.name} transferible`, price: p.price * 2, tradable: true })));
+
+// Mercado de transferibles
+export const MARKET = {
+  minPrice: 100,
+  maxPrice: 10_000_000,
+  durationsMin: [5, 60, 180, 720, 1440],  // 5 min, 1 h, 3 h, 12 h, 24 h
+  taxPct: 0.05,            // el vendedor cobra el 95 % (impuesto del 5 %)
+  minIncrement: 50,        // puja mínima: +50 o +5 %, lo que sea mayor
+  incrementPct: 0.05,
+  extendSeconds: 30,       // pujar en los últimos segundos alarga la subasta hasta 30 s
+  maxActivePerUser: 30,
+};
 
 // Player picks por racha de victorias seguidas. Cada pick ofrece 3 cartas dentro de un rango
 // de media; dentro del rango, cuanto más alta la media, menos probable (factor por punto).

@@ -7,8 +7,9 @@ import { Server } from 'socket.io';
 import * as auth from './auth.js';
 import * as game from './game.js';
 import { CARDS, CARD_BY_ID } from './cards.js';
-import { CRESTS, ECONOMY, MATCH, PACKS, PICK, SHOT, TIERS, ZONES } from './config.js';
+import { CRESTS, ECONOMY, MARKET, MATCH, PACKS, PICK, SHOT, TIERS, ZONES } from './config.js';
 import { createMatchManager } from './match.js';
+import { createMarket } from './market.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -20,6 +21,7 @@ export function createApp({ db, rng, timing } = {}) {
   const server = http.createServer(app);
   const io = new Server(server, { serveClient: true });
   const manager = createMatchManager({ io, db, rng, timing });
+  const market = createMarket({ db, notify: (uid, ev) => io.to(`u:${uid}`).emit('market', ev) });
 
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
@@ -94,7 +96,7 @@ export function createApp({ db, rng, timing } = {}) {
   // ---------------- Datos públicos ----------------
   app.get('/api/meta', (req, res) => {
     res.json({ crests: CRESTS, packs: PACKS, economy: ECONOMY, tiers: TIERS, zones: ZONES, pick: PICK,
-      match: { kicksPerTeam: MATCH.kicksPerTeam, chooseMs: MATCH.chooseMs }, shot: SHOT });
+      match: { kicksPerTeam: MATCH.kicksPerTeam, chooseMs: MATCH.chooseMs }, shot: SHOT, market: MARKET });
   });
   app.get('/api/cards', (req, res) => res.json({ cards: CARDS }));
   app.get('/api/leaderboard', wrap(async (req, res) => {
@@ -187,6 +189,14 @@ export function createApp({ db, rng, timing } = {}) {
 
   // ---------------- Tienda ----------------
   app.post('/api/shop/open', requireUser(async (req, res) => res.json(await game.openPack(db, req.user.id, req.body?.packId))));
+
+  // ---------------- Mercado de transferibles ----------------
+  app.get('/api/market', requireUser(async (req, res) => res.json({ listings: await market.search(req.user.id, req.query) })));
+  app.get('/api/market/mine', requireUser(async (req, res) => res.json(await market.mine(req.user.id))));
+  app.post('/api/market/list', requireUser(async (req, res) => res.json(await market.list(req.user.id, req.body || {}))));
+  app.post('/api/market/:id/bid', requireUser(async (req, res) => res.json(await market.bid(req.user.id, Number(req.params.id) || 0, req.body?.amount))));
+  app.post('/api/market/:id/buy', requireUser(async (req, res) => res.json(await market.buyNow(req.user.id, Number(req.params.id) || 0))));
+  app.post('/api/market/:id/cancel', requireUser(async (req, res) => res.json(await market.cancel(req.user.id, Number(req.params.id) || 0))));
 
   // ---------------- Player picks ----------------
   app.get('/api/picks', requireUser(async (req, res) => {
@@ -346,10 +356,12 @@ export function createApp({ db, rng, timing } = {}) {
     db.query('DELETE FROM sessions WHERE expires_at < now()').catch(() => {});
     db.query(`DELETE FROM auth_attempts WHERE created_at < now() - interval '2 days'`).catch(() => {});
   }, 3600_000);
+  // Cierra las subastas vencidas aunque nadie abra el mercado
+  const marketTimer = setInterval(() => market.settleExpired().catch((e) => console.error('mercado', e)), 15_000);
   cleanup.unref();
 
   return {
-    app, server, io, manager,
-    async close() { clearInterval(cleanup); await new Promise((r) => io.close(() => r())); },
+    app, server, io, manager, market,
+    async close() { clearInterval(cleanup); clearInterval(marketTimer); await new Promise((r) => io.close(() => r())); },
   };
 }

@@ -40,9 +40,9 @@ export function publicUser(u) {
 
 export async function getCollection(db, userId) {
   const rows = await db.query(
-    `SELECT card_id, count(*)::int AS n, min(created_at) AS first FROM user_cards
-     WHERE user_id = $1 GROUP BY card_id`, [userId]);
-  return rows.filter((r) => CARD_BY_ID.has(r.card_id)).map((r) => ({ cardId: r.card_id, count: r.n, first: r.first }));
+    `SELECT card_id, count(*)::int AS n, sum(CASE WHEN tradable THEN 1 ELSE 0 END)::int AS t, min(created_at) AS first
+     FROM user_cards WHERE user_id = $1 GROUP BY card_id`, [userId]);
+  return rows.filter((r) => CARD_BY_ID.has(r.card_id)).map((r) => ({ cardId: r.card_id, count: r.n, tradable: r.t, first: r.first }));
 }
 
 async function ensureLineup(q, userId) {
@@ -68,14 +68,14 @@ export async function openPack(db, userId, packId) {
     const keeper = drawCard('portero', pack.odds);
     const owned = new Set((await q('SELECT DISTINCT card_id FROM user_cards WHERE user_id=$1', [userId])).map((r) => r.card_id));
     for (const c of [player, keeper]) {
-      await q('INSERT INTO user_cards (user_id, card_id, source) VALUES ($1,$2,$3)', [userId, c.id, `sobre:${pack.id}`]);
+      await q('INSERT INTO user_cards (user_id, card_id, source, tradable) VALUES ($1,$2,$3,$4)', [userId, c.id, `sobre:${pack.id}`, !!pack.tradable]);
     }
     await q('INSERT INTO pack_openings (user_id, pack_id, price, cards) VALUES ($1,$2,$3,$4)',
       [userId, pack.id, pack.price, JSON.stringify([player.id, keeper.id])]);
     await ensureLineup(q, userId);
     return {
       coins: paid[0].coins,
-      cards: [player, keeper].map((c) => ({ ...c, isNew: !owned.has(c.id) })),
+      cards: [player, keeper].map((c) => ({ ...c, isNew: !owned.has(c.id), tradable: !!pack.tradable })),
     };
   });
 }
@@ -106,7 +106,7 @@ export async function quickSell(db, userId, cardId) {
   if (!card) throw new GameError('Carta no válida');
   const value = ECONOMY.quickSell[card.tier];
   return db.tx(async ({ query: q }) => {
-    const copies = await q('SELECT id FROM user_cards WHERE user_id=$1 AND card_id=$2 ORDER BY id DESC FOR UPDATE',
+    const copies = await q('SELECT id FROM user_cards WHERE user_id=$1 AND card_id=$2 ORDER BY tradable ASC, id DESC FOR UPDATE',
       [userId, cardId]);
     if (copies.length < 2) throw new GameError('Solo puedes vender cartas repetidas (te quedas siempre con una copia)');
     await q('DELETE FROM user_cards WHERE id=$1', [copies[0].id]);
@@ -117,11 +117,12 @@ export async function quickSell(db, userId, cardId) {
 
 export async function sellAllDuplicates(db, userId) {
   return db.tx(async ({ query: q }) => {
-    const rows = await q('SELECT id, card_id FROM user_cards WHERE user_id=$1 ORDER BY id FOR UPDATE', [userId]);
+    const rows = await q('SELECT id, card_id, tradable FROM user_cards WHERE user_id=$1 ORDER BY tradable DESC, id FOR UPDATE', [userId]);
     const seen = new Set();
     let total = 0, count = 0;
     for (const r of rows) {
       if (!seen.has(r.card_id)) { seen.add(r.card_id); continue; }
+      if (r.tradable) continue; // las transferibles se venden en el mercado
       const card = CARD_BY_ID.get(r.card_id);
       if (!card) continue;
       await q('DELETE FROM user_cards WHERE id=$1', [r.id]);

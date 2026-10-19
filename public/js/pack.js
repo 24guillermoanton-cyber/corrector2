@@ -120,7 +120,7 @@ export function openPackAnimation({ pack, cards, onAgain, onCollection, onClose,
     setColor(COLOR[pack?.id] || '#ffd54a');
     if (pack) {
       stage.innerHTML = `<div class="clue"><small>${esc(pack.name)}</small></div>
-        <div class="pack-big"><div class="pack-art p-${esc(pack.id)}"><span class="pk-ball">⚽</span><span class="pname">${esc(pack.name.replace('Sobre ', '').toUpperCase())}</span></div></div>
+        <div class="pack-big"><div class="pack-art p-${esc(pack.id.replace(/-t$/, ''))}"><span class="pk-ball">⚽</span><span class="pname">${esc(pack.name.replace('Sobre ', '').toUpperCase())}</span></div></div>
         <p class="muted">Toca el sobre para abrirlo</p>`;
       const big = $('.pack-big', stage);
       await new Promise((r) => { big.onclick = r; wake = r; setTimeout(r, 2500); });

@@ -92,6 +92,20 @@ function connectSocket() {
   s.on('room:closed', ({ reason }) => { toast(reason || 'La sala se ha cerrado'); state.room = null; bus.emit('room'); });
   s.on('kick:result', (r) => bus.emit('kick', r));
   s.on('match:end', (r) => { bus.emit('end', r); refreshMe(); });
+  s.on('market', (ev) => {
+    const n = (x) => Number(x || 0).toLocaleString('es-ES');
+    const msg = {
+      outbid: [`Te han superado la puja por ${ev.card}. Te devolvemos ${n(ev.amount)} 🪙`, 'err'],
+      bid: [`Nueva puja de ${n(ev.amount)} 🪙 por tu ${ev.card}`, ''],
+      sold: [`¡Has vendido ${ev.card}! +${n(ev.amount)} 🪙`, 'gold'],
+      won: [`¡Has ganado la subasta de ${ev.card}!`, 'gold'],
+      expired: [`Nadie compró ${ev.card}: vuelve a tu colección`, ''],
+    }[ev.type];
+    if (msg) toast(msg[0], msg[1]);
+    if (ev.type === 'sold' || ev.type === 'won') sfx.coins();
+    refreshMe();
+    bus.emit('market', ev);
+  });
   s.on('gift', (g) => {
     refreshMe();
     showGift(g, { getCard: (id) => state.cards.get(id), onPicks: () => { location.hash = '#/picks'; } });
@@ -341,7 +355,7 @@ routes.coleccion = () => {
         : (a, b) => b.rating - a.rating || a.name.localeCompare(b.name, 'es'));
     const me = state.me;
     $('#grid').innerHTML = list.map((c) => cardHTML(c, {
-      count: owned.get(c.id)?.count, missing: !owned.has(c.id), extraClass: owned.has(c.id) ? 'clickable' : '',
+      count: owned.get(c.id)?.count, tradable: owned.get(c.id)?.tradable || 0, missing: !owned.has(c.id), extraClass: owned.has(c.id) ? 'clickable' : '',
       selected: c.id === me.shooterCard || c.id === me.keeperCard,
     })).join('') || `<div class="panel center" style="grid-column:1/-1"><p>No hay cartas con estos filtros.</p>${state.collection.length ? '' : '<a class="btn btn-gold" href="#/tienda">Ir a la tienda</a>'}</div>`;
   }
@@ -379,10 +393,11 @@ function cardDetail(cardId, redraw) {
         ${statBars(c)}
         <p class="muted" style="font-size:.85rem">${c.type === 'portero' ? 'La media de un portero representa su capacidad para parar penaltis.' : 'La media de un lanzador representa sobre todo lo bien que tira penaltis.'} Valoraciones orientativas de juego.</p>
         <p class="credit">${photoCredit(c)}</p>
-        <p><b>Copias:</b> ${own?.count || 0}</p>
+        <p><b>Copias:</b> ${own?.count || 0}${own?.tradable ? ` · <b class="win">${own.tradable} transferible${own.tradable > 1 ? 's' : ''}</b>` : ''}</p>
         <div class="row">
           ${isStarter ? '<span class="chip">✔ Titular</span>' : `<button class="btn btn-primary" id="set-starter">${c.type === 'portero' ? '🧤 Poner como portero' : '⚽ Poner como lanzador'}</button>`}
-          ${own?.count > 1 ? `<button class="btn btn-gold" id="sell-one">Vender repetida (+${sell} 🪙)</button>` : ''}
+          ${own?.count > 1 ? `<button class="btn btn-gold" id="sell-one">Venta rápida (+${sell} 🪙)</button>` : ''}
+          ${own?.tradable ? (isStarter && own.count === 1 ? '<span class="muted" style="font-size:.85rem">💱 Para venderla en el mercado, pon antes otra carta de titular.</span>' : '<button class="btn btn-primary" id="to-market">💱 Vender en el mercado</button>') : ''}
         </div>
       </div></div>
     <div class="modal-actions"><button class="btn" data-close>Cerrar</button></div>`, { wide: true });
@@ -396,6 +411,7 @@ function cardDetail(cardId, redraw) {
       m.close(); redraw?.();
     } catch (err) { toast(err.message, 'err'); }
   });
+  $('#to-market', m.el)?.addEventListener('click', () => { m.close(); listOnMarket(c, redraw); });
   $('#sell-one', m.el)?.addEventListener('click', async () => {
     try {
       const r = await api('POST', '/api/collection/sell', { cardId: c.id });
@@ -413,14 +429,16 @@ routes.tienda = () => {
     app.innerHTML = `<div class="fade-in">
       <div class="screen-title"><div><h1>Tienda de sobres</h1><p class="muted">Cada sobre trae exactamente <b>1 lanzador</b> y <b>1 portero</b>. Solo se paga con monedas del juego.</p></div>
         <span class="coins" style="font-size:1.2rem">🪙 ${state.me.coins.toLocaleString('es-ES')}</span></div>
-      <div class="packs">${state.meta.packs.map((p) => `<div class="panel pack-card">
-        <div class="pack-art p-${p.id}"><span class="pk-ball">⚽</span><span class="pname">${esc(p.name.replace('Sobre ', '').toUpperCase())}</span></div>
+      ${[[false, 'Sobres', ''], [true, '💱 Sobres transferibles', 'Mismas probabilidades al doble de precio. Sus cartas se pueden vender en el <a href="#/mercado">mercado de transferibles</a>.']].map(([tr, title, sub]) => `
+      <h2 style="margin:18px 0 4px">${title}</h2>${sub ? `<p class="muted" style="margin:0 0 10px">${sub}</p>` : ''}
+      <div class="packs">${state.meta.packs.filter((p) => !!p.tradable === tr).map((p) => `<div class="panel pack-card">
+        <div class="pack-art p-${p.id.replace(/-t$/, '')} ${p.tradable ? 'tradable' : ''}"><span class="pk-ball">⚽</span><span class="pname">${esc(p.name.replace('Sobre ', '').replace(' transferible', '').toUpperCase())}</span>${p.tradable ? '<span class="pk-trade">⇄ TRANSFERIBLE</span>' : ''}</div>
         <h2 style="margin:0">${esc(p.name)}</h2>
         <div class="price">${p.price.toLocaleString('es-ES')} 🪙</div>
         <table class="odds"><tbody>${TIER_ORDER.filter((t) => p.odds[t] > 0).map((t) => `<tr><td><span class="tier-dot td-${t}"></span>${TIER_NAMES[t]}</td><td>${p.odds[t]}%</td></tr>`).join('')}</tbody></table>
         <p class="muted" style="font-size:.8rem;margin:0">Probabilidad por carta (se aplica al lanzador y al portero por separado)</p>
         <button class="btn btn-gold btn-block" data-buy="${p.id}" ${state.me.coins < p.price ? 'disabled' : ''}>${state.me.coins < p.price ? 'Monedas insuficientes' : 'Comprar'}</button>
-      </div>`).join('')}</div>
+      </div>`).join('')}</div>`).join('')}
       <div class="panel" style="margin-top:16px"><h3>¿Cómo conseguir más monedas?</h3>
         <p class="muted" style="margin:0">Gana tandas: <b class="win">+${state.meta.economy.winReward}</b> por victoria y <b>+${state.meta.economy.lossReward}</b> por derrota (abandonar no da monedas). También puedes vender cartas repetidas en tu colección.</p></div>
     </div>`;
@@ -492,6 +510,144 @@ routes.picks = () => {
     }));
   };
   load().catch((e) => toast(e.message, 'err'));
+};
+
+// ---------------------------------------------------------------------
+//  Mercado de transferibles
+// ---------------------------------------------------------------------
+const fmt = (n) => Number(n || 0).toLocaleString('es-ES');
+const fmtLeft = (ms) => {
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s >= 3600) return `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`;
+  if (s >= 60) return `${Math.floor(s / 60)} min ${s % 60} s`;
+  return `${s} s`;
+};
+const DURATIONS = { 5: '5 minutos', 60: '1 hora', 180: '3 horas', 720: '12 horas', 1440: '24 horas' };
+
+function listOnMarket(c, redraw) {
+  const mk = state.meta.market;
+  const suggested = { bronce: 300, plata: 1000, oro: 4000, elite: 25000, toty: 150000, futties: 150000, icono: 600000 }[c.tier] || 1000;
+  const m = modal(`<h2>💱 Vender ${esc(c.name)}</h2>
+    <div class="row" style="align-items:flex-start;gap:18px"><div>${cardHTML(c)}</div>
+    <form class="grid" id="mk-form" style="flex:1;min-width:220px">
+      <label>Precio de salida (puja mínima)</label><input name="startPrice" type="number" min="${mk.minPrice}" step="50" value="${suggested}" required>
+      <label>Precio "comprar ya"</label><input name="buyNow" type="number" min="${mk.minPrice}" step="50" value="${suggested * 3}" required>
+      <label>Duración</label><select name="minutes">${mk.durationsMin.map((d) => `<option value="${d}" ${d === 60 ? 'selected' : ''}>${DURATIONS[d] || `${d} min`}</option>`).join('')}</select>
+      <p class="muted" style="margin:0;font-size:.85rem">Al vender pagas un impuesto del ${Math.round(mk.taxPct * 100)}%. Si nadie la compra, la carta vuelve a tu colección. Puedes retirarla mientras no tenga pujas.</p>
+      <div class="modal-actions"><button type="button" class="btn" data-close>Cancelar</button><button class="btn btn-gold">Poner a la venta</button></div>
+    </form></div>`, { wide: true });
+  $('.fcard', m.el).style.setProperty('--w', '160px');
+  $('#mk-form', m.el).onsubmit = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    try {
+      await api('POST', '/api/market/list', { cardId: c.id, startPrice: Number(fd.get('startPrice')), buyNow: Number(fd.get('buyNow')), minutes: Number(fd.get('minutes')) });
+      m.close(); sfx.coins(); toast(`${c.name} está a la venta en el mercado`, 'gold');
+      await refreshMe(); redraw?.();
+    } catch (err) { toast(err.message, 'err'); }
+  };
+}
+
+routes.mercado = () => {
+  let tab = 'comprar';
+  const f = { q: '', tier: '', type: '' };
+  app.innerHTML = `<div class="fade-in">
+    <div class="screen-title"><div><h1>💱 Mercado de transferibles</h1>
+      <p class="muted">Puja o compra al momento cartas de otros jugadores. Para vender, abre una carta transferible (⇄) en tu <a href="#/coleccion">colección</a>.</p></div>
+      <span class="coins" style="font-size:1.2rem" id="mk-coins">🪙 ${fmt(state.me.coins)}</span></div>
+    <div class="row tabs" style="margin-bottom:12px">
+      <button class="btn btn-sm" data-tab="comprar">🔎 Comprar</button>
+      <button class="btn btn-sm" data-tab="ventas">📤 Mis ventas</button>
+      <button class="btn btn-sm" data-tab="pujas">🔨 Mis pujas</button>
+    </div>
+    <div class="panel" id="mk-filters" style="margin-bottom:12px"><div class="filters">
+      <input id="mk-q" placeholder="Buscar jugador…">
+      <select id="mk-tier"><option value="">Todas las categorías</option>${TIER_ORDER.map((t) => `<option value="${t}">${TIER_NAMES[t]}</option>`).join('')}</select>
+      <select id="mk-type"><option value="">Todos</option><option value="jugador">Lanzadores</option><option value="portero">Porteros</option></select>
+    </div></div>
+    <div id="mk-body"><div class="spinner"></div></div></div>`;
+
+  const item = (l, actions) => {
+    const c = state.cards.get(l.cardId);
+    if (!c) return '';
+    const price = l.bid != null ? `<b>${fmt(l.bid)} 🪙</b> <span class="muted">(${l.bids} puja${l.bids === 1 ? '' : 's'})</span>` : `<span class="muted">Salida:</span> <b>${fmt(l.startPrice)} 🪙</b>`;
+    const status = l.status === 'active' ? `⏱ <span data-left="${Date.now() + l.leftMs}">${fmtLeft(l.leftMs)}</span>`
+      : { sold: '✅ Vendida', expired: '⌛ Sin ofertas', cancelled: '↩ Retirada' }[l.status] || l.status;
+    return `<div class="panel mk-item" data-id="${l.id}">
+      ${cardHTML(c)}
+      <div class="mk-info">
+        ${l.sellerName && !l.mine ? `<div class="muted" style="font-size:.85rem">Vende: <b>${esc(l.sellerName)}</b></div>` : ''}
+        <div>${price}${l.youAreBidder && l.status === 'active' ? ' <span class="tag win">TU PUJA</span>' : ''}</div>
+        <div><span class="muted">Comprar ya:</span> <b>${fmt(l.buyNow)} 🪙</b></div>
+        <div class="muted">${status}</div>
+        ${actions(l)}
+      </div></div>`;
+  };
+  const buyActions = (l) => l.status !== 'active' ? '' : `<div class="row" style="gap:6px;margin-top:6px">
+      <input type="number" class="mk-bid" min="${l.minBid}" step="50" value="${l.minBid}" style="width:110px" ${l.youAreBidder ? 'disabled' : ''}>
+      <button class="btn btn-sm" data-bid="${l.id}" ${l.youAreBidder ? 'disabled' : ''}>🔨 Pujar</button>
+      <button class="btn btn-sm btn-gold" data-buy="${l.id}">Comprar ya</button></div>`;
+
+  async function load() {
+    const body = $('#mk-body'); if (!body) return;
+    $$('[data-tab]').forEach((b) => b.classList.toggle('btn-primary', b.dataset.tab === tab));
+    $('#mk-filters').hidden = tab !== 'comprar';
+    $('#mk-coins').textContent = `🪙 ${fmt(state.me.coins)}`;
+    if (tab === 'comprar') {
+      const qs = new URLSearchParams(f).toString();
+      const { listings } = await api('GET', `/api/market?${qs}`);
+      body.innerHTML = `<div class="mk-grid">${listings.map((l) => item(l, buyActions)).join('')}</div>`
+        || '';
+      if (!listings.length) body.innerHTML = '<div class="panel center"><p>No hay cartas a la venta con estos filtros.</p></div>';
+    } else {
+      const { selling, bidding, won } = await api('GET', '/api/market/mine');
+      if (tab === 'ventas') {
+        body.innerHTML = selling.length ? `<div class="mk-grid">${selling.map((l) => item(l, (x) => x.status === 'active' && !x.bid
+          ? `<button class="btn btn-sm" data-cancel="${x.id}" style="margin-top:6px">↩ Retirar</button>` : '')).join('')}</div>`
+          : '<div class="panel center"><p>No tienes cartas a la venta. Abre una carta transferible (⇄) en tu colección y pulsa "Vender en el mercado".</p><a class="btn btn-gold" href="#/coleccion">Ir a la colección</a></div>';
+      } else {
+        body.innerHTML = `<h3>Pujas activas</h3>${bidding.length ? `<div class="mk-grid">${bidding.map((l) => item(l, buyActions)).join('')}</div>` : '<p class="muted">No tienes pujas activas.</p>'}
+          <h3>Ganadas / compradas (últimos 3 días)</h3>${won.length ? `<div class="mk-grid">${won.map((l) => item(l, () => '')).join('')}</div>` : '<p class="muted">Todavía nada.</p>'}`;
+      }
+    }
+    $$('#mk-body .fcard').forEach((c) => c.style.setProperty('--w', '120px'));
+  }
+
+  $$('[data-tab]').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; load().catch((e) => toast(e.message, 'err')); }));
+  let qT = 0;
+  $('#mk-q').addEventListener('input', (e) => { f.q = e.target.value; clearTimeout(qT); qT = setTimeout(() => load().catch(() => {}), 300); });
+  $('#mk-tier').addEventListener('input', (e) => { f.tier = e.target.value; load().catch(() => {}); });
+  $('#mk-type').addEventListener('input', (e) => { f.type = e.target.value; load().catch(() => {}); });
+  $('#mk-body').addEventListener('click', async (e) => {
+    const bid = e.target.closest('[data-bid]'), buy = e.target.closest('[data-buy]'), cancel = e.target.closest('[data-cancel]');
+    try {
+      if (bid) {
+        const amount = Number(bid.parentElement.querySelector('.mk-bid').value);
+        const r = await api('POST', `/api/market/${bid.dataset.bid}/bid`, { amount });
+        if (r.card) toast(`¡Has comprado ${r.card.name}!`, 'gold'); else toast(`Puja de ${fmt(amount)} 🪙 hecha`);
+        sfx.coins(); await refreshMe(); load();
+      }
+      if (buy) {
+        const l = buy.closest('.mk-item');
+        const ok = await confirmModal('Comprar ya', `¿Comprar esta carta por <b>${$('.mk-info div:nth-child(3) b', l)?.textContent || ''}</b>?`, { okText: 'Comprar' });
+        if (!ok) return;
+        const r = await api('POST', `/api/market/${buy.dataset.buy}/buy`);
+        await refreshMe();
+        openPackAnimation({ cards: [{ ...r.card, isNew: true }], title: 'Mercado', onClose: () => load() });
+      }
+      if (cancel) {
+        await api('POST', `/api/market/${cancel.dataset.cancel}/cancel`);
+        toast('Carta retirada: vuelve a tu colección'); await refreshMe(); load();
+      }
+    } catch (err) { toast(err.message, 'err'); load().catch(() => {}); }
+  });
+  const offMk = bus.on('market', () => load().catch(() => {}));
+  const iv = setInterval(() => {
+    $$('[data-left]').forEach((s) => { s.textContent = fmtLeft(Number(s.dataset.left) - Date.now()); });
+  }, 1000);
+  const refresh = setInterval(() => load().catch(() => {}), 20_000);
+  load().catch((e) => toast(e.message, 'err'));
+  return () => { clearInterval(iv); clearInterval(refresh); offMk(); };
 };
 
 // ---------------------------------------------------------------------

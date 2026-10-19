@@ -72,7 +72,7 @@ test('compras simultáneas no permiten gastar más monedas de las que hay', asyn
 test('probabilidades de sobres suman 100 y los caros son mejores', () => {
   const value = { bronce: 1, plata: 2, oro: 3, elite: 4, toty: 5, futties: 5, icono: 6 };
   let prev = 0;
-  for (const p of PACKS) {
+  for (const p of PACKS.filter((x) => !x.tradable)) {
     const sum = Object.values(p.odds).reduce((a, b) => a + b, 0);
     assert.ok(Math.abs(sum - 100) < 1e-9, `${p.id} suma ${sum}`);
     const ev = Object.entries(p.odds).reduce((s, [t, o]) => s + value[t] * o, 0);
@@ -377,4 +377,74 @@ test('Lamine Yamal FUTTIES tiene 99 de media', async () => {
   const { CARD_BY_ID } = await import('../server/cards.js');
   const c = CARD_BY_ID.get('futties-j-lamine-yamal');
   assert.equal(c.rating, 99);
+});
+
+test('sobres transferibles: copia de cada sobre al doble de precio', () => {
+  for (const p of PACKS.filter((x) => !x.tradable)) {
+    const t = PACKS.find((x) => x.id === `${p.id}-t`);
+    assert.ok(t && t.tradable, `falta ${p.id}-t`);
+    assert.equal(t.price, p.price * 2);
+    assert.deepEqual(t.odds, p.odds);
+  }
+});
+
+test('mercado de transferibles: vender, pujar, superar puja, comprar ya y fin de subasta', async () => {
+  const { MARKET } = await import('../server/config.js');
+  const seller = await newUser(srv, 'sel');
+  const b1 = await newUser(srv, 'bA');
+  const b2 = await newUser(srv, 'bB');
+  for (const u of [seller, b1, b2]) await srv.db.query('UPDATE users SET coins=100000 WHERE id=$1', [u.user.id]);
+  // Sobre normal: cartas no transferibles; sobre transferible: sí
+  const normal = await seller.post('/api/shop/open', { packId: 'bronce' });
+  const ncard = normal.data.cards[0].id;
+  assert.equal((await seller.post('/api/market/list', { cardId: ncard, startPrice: 200, buyNow: 1000, minutes: 60 })).status, 400);
+  const opened = await seller.post('/api/shop/open', { packId: 'bronce-t' });
+  assert.equal(opened.status, 200);
+  const cards = opened.data.cards.map((c) => c.id);
+  const col = (await seller.get('/api/collection')).data.collection;
+  assert.ok(col.find((c) => c.cardId === cards[0]).tradable >= 1);
+
+  // Poner a la venta: la carta sale de la colección (si no es la titular única)
+  await seller.post('/api/lineup', { shooterCard: normal.data.cards[0].id, keeperCard: normal.data.cards[1].id });
+  const listRes = await seller.post('/api/market/list', { cardId: cards[0], startPrice: 500, buyNow: 5000, minutes: 60 });
+  assert.equal(listRes.status, 200, JSON.stringify(listRes.data));
+  const id = listRes.data.id;
+  assert.equal((await seller.post(`/api/market/${id}/bid`, { amount: 600 })).status, 400, 'no puedes pujar por lo tuyo');
+  const found = (await b1.get('/api/market')).data.listings.find((l) => l.id === id);
+  assert.ok(found);
+  assert.equal(found.minBid, 500);
+
+  // Puja de b1 (retiene monedas); b2 supera y a b1 se le devuelven
+  assert.equal((await b1.post(`/api/market/${id}/bid`, { amount: 400 })).status, 400);
+  assert.equal((await b1.post(`/api/market/${id}/bid`, { amount: 500 })).status, 200);
+  assert.equal((await b1.get('/api/me')).data.user.coins, 100000 - 500);
+  assert.equal((await b2.post(`/api/market/${id}/bid`, { amount: 520 })).status, 400, 'incremento mínimo');
+  assert.equal((await b2.post(`/api/market/${id}/bid`, { amount: 600 })).status, 200);
+  assert.equal((await b1.get('/api/me')).data.user.coins, 100000);
+  assert.equal((await seller.post(`/api/market/${id}/cancel`)).status, 400, 'no se retira con pujas');
+
+  // Comprar ya: b1 se la lleva; se devuelve la puja de b2 y el vendedor cobra el 95 %
+  const sellerBefore = (await seller.get('/api/me')).data.user.coins;
+  const buy = await b1.post(`/api/market/${id}/buy`);
+  assert.equal(buy.status, 200);
+  assert.equal((await b2.get('/api/me')).data.user.coins, 100000);
+  assert.equal((await b1.get('/api/me')).data.user.coins, 100000 - 5000);
+  assert.equal((await seller.get('/api/me')).data.user.coins, sellerBefore + Math.floor(5000 * (1 - MARKET.taxPct)));
+  const bcol = (await b1.get('/api/collection')).data.collection.find((c) => c.cardId === cards[0]);
+  assert.equal(bcol.tradable, 1, 'sigue siendo transferible');
+  assert.equal((await b2.post(`/api/market/${id}/buy`)).status, 409);
+
+  // Subasta que vence con puja: la carta va al pujador
+  const l2 = (await seller.post('/api/market/list', { cardId: cards[1], startPrice: 300, buyNow: 3000, minutes: 5 })).data.id;
+  await b2.post(`/api/market/${l2}/bid`, { amount: 300 });
+  await srv.db.query(`UPDATE market_listings SET expires_at = now() - interval '1 second' WHERE id=$1`, [l2]);
+  await b2.get('/api/market');
+  assert.ok((await b2.get('/api/collection')).data.collection.some((c) => c.cardId === cards[1]));
+  const mine = (await seller.get('/api/market/mine')).data;
+  assert.equal(mine.selling.find((l) => l.id === l2).status, 'sold');
+
+  // Vender de nuevo y retirarla sin pujas: vuelve a la colección
+  const l3 = (await b1.post('/api/market/list', { cardId: cards[0], startPrice: 200, buyNow: 900, minutes: 5 })).data.id;
+  assert.equal((await b1.post(`/api/market/${l3}/cancel`)).status, 200);
+  assert.ok((await b1.get('/api/collection')).data.collection.some((c) => c.cardId === cards[0]));
 });

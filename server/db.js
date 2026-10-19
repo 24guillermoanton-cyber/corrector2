@@ -43,6 +43,25 @@ CREATE TABLE IF NOT EXISTS user_cards (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS user_cards_user ON user_cards(user_id, card_id);
+ALTER TABLE user_cards ADD COLUMN IF NOT EXISTS tradable BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE TABLE IF NOT EXISTS market_listings (
+  id          SERIAL PRIMARY KEY,
+  seller_id   INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  card_id     TEXT NOT NULL,
+  start_price INTEGER NOT NULL,
+  buy_now     INTEGER NOT NULL,
+  bid         INTEGER,
+  bidder_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  bids        INTEGER NOT NULL DEFAULT 0,
+  status      TEXT NOT NULL DEFAULT 'active',
+  buyer_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  final_price INTEGER,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  closed_at   TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS market_active ON market_listings(status, expires_at);
 
 CREATE TABLE IF NOT EXISTS pack_openings (
   id         SERIAL PRIMARY KEY,

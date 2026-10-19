@@ -79,6 +79,10 @@
   position: absolute; right: 2%; bottom: 14%; z-index: 10; background: #0b1424; color: #fff; font-weight: 800; font-size: 0.68em;
   padding: 0.15em 0.5em; border-radius: 1em; border: 0.08em solid rgba(255, 255, 255, 0.4);
 }
+.fcard .f-trade {
+  position: absolute; left: 2%; bottom: 14%; z-index: 10; background: #27e36f; color: #031a0b; font-weight: 900; font-size: 0.66em;
+  padding: 0.12em 0.45em; border-radius: 1em; border: 0.08em solid rgba(255, 255, 255, 0.6);
+}
 .fcard .f-sel { position: absolute; left: 50%; transform: translateX(-50%); bottom: -0.55em; z-index: 10; box-shadow: 0 0.1em 0.3em rgba(0,0,0,0.5); background: var(--accent); color: #031a0b; font-weight: 800; font-size: 0.58em; padding: 0.15em 0.55em; border-radius: 1em; }
 
 /* ---- Brillo que recorre la carta ---- */

@@ -151,7 +151,7 @@ const TYPE_ICON = {
   jugador: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z" fill="currentColor"/></svg>',
   portero: '<svg viewBox="0 0 24 24"><path d="M7 21v-7l-2-3V6a1.5 1.5 0 013 0v4h1V4a1.5 1.5 0 013 0v6h1V5a1.5 1.5 0 013 0v5h1V7a1.5 1.5 0 013 0v7l-3 7z" fill="currentColor"/></svg>',
 };
-export function cardHTML(card, { count, selected, extraClass = '', missing = false, attrs = '' } = {}) {
+export function cardHTML(card, { count, selected, extraClass = '', missing = false, attrs = '', tradable = 0 } = {}) {
   if (!card) return '';
   card = { ...card, type: card.type || (card.position === 'POR' ? 'portero' : 'jugador') };
   const stats = STAT_LABELS[card.type].map(([k, l]) => `<div><span>${l}</span><b>${card.stats[k]}</b></div>`).join('');
@@ -178,6 +178,7 @@ export function cardHTML(card, { count, selected, extraClass = '', missing = fal
       ${special ? '<div class="sparkles"></div>' : ''}
     </div></div>
     ${count > 1 ? `<span class="f-count">x${count}</span>` : ''}
+    ${tradable ? `<span class="f-trade" title="${tradable} transferible${tradable > 1 ? 's' : ''}">⇄${tradable > 1 ? tradable : ''}</span>` : ''}
     ${selected ? `<span class="f-sel">TITULAR</span>` : ''}
   </div>`;
 }
