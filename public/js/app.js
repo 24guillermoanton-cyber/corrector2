@@ -91,6 +91,12 @@ function connectSocket() {
   s.on('room:closed', ({ reason }) => { toast(reason || 'La sala se ha cerrado'); state.room = null; bus.emit('room'); });
   s.on('kick:result', (r) => bus.emit('kick', r));
   s.on('match:end', (r) => { bus.emit('end', r); refreshMe(); });
+  s.on('gift', (g) => {
+    const parts = [g.coins ? `${g.coins} 🪙` : '', g.card ? `la carta ${g.card.name}` : ''].filter(Boolean).join(' y ');
+    toast(`🎁 ${g.from} te ha regalado ${parts}`);
+    sfx.coins();
+    refreshMe();
+  });
 }
 function setRoom(st) {
   const prev = state.room;
@@ -518,6 +524,19 @@ routes.clasificacion = () => {
 // ---------------------------------------------------------------------
 //  Administración
 // ---------------------------------------------------------------------
+// Campos del formulario de regalo: monedas y una carta opcional.
+function giftFields() {
+  const cards = [...state.cards.values()]
+    .sort((a, b) => TIER_ORDER.indexOf(b.tier) - TIER_ORDER.indexOf(a.tier) || b.rating - a.rating || a.name.localeCompare(b.name));
+  return `<input name="coins" type="number" min="0" step="1" placeholder="Monedas" style="width:140px">
+    <select name="cardId" style="width:auto;max-width:320px"><option value="">— Sin carta —</option>
+    ${cards.map((c) => `<option value="${esc(c.id)}">${esc(TIER_NAMES[c.tier])} · ${c.rating} · ${esc(c.name)} (${c.type === 'portero' ? 'POR' : esc(c.position)})</option>`).join('')}</select>`;
+}
+function giftBody(form) {
+  const fd = new FormData(form);
+  return { coins: fd.get('coins') ? Number(fd.get('coins')) : 0, cardId: fd.get('cardId') || null };
+}
+
 routes.admin = () => {
   app.innerHTML = `<div class="fade-in grid">
     <div class="screen-title"><div><h1>🛡️ Administración</h1><p class="muted" id="adm-sum"></p></div><button class="btn btn-sm" id="adm-refresh">↻ Actualizar</button></div>
@@ -525,6 +544,8 @@ routes.admin = () => {
       <form class="row" id="coins-form"><select name="mode" style="width:auto"><option value="add">Añadir / restar</option><option value="set">Fijar saldo</option></select>
       <input name="amount" type="number" step="1" required placeholder="Cantidad" style="width:160px"><button class="btn btn-gold">Aplicar</button>
       <span class="muted">Saldo actual: <b id="adm-coins">${state.me.coins}</b></span></form></div>
+    <div class="panel"><h3>🎁 Regalar a todos los conectados</h3>
+      <form class="row" id="gift-all-form">${giftFields()}<button class="btn btn-gold">Regalar a todos</button></form></div>
     <div class="panel table-wrap"><h3>Cuentas registradas</h3><div id="adm-users"><div class="spinner"></div></div></div>
     <div class="panel table-wrap"><h3>Registro de operaciones</h3><div id="adm-logs"></div></div></div>`;
   const load = async () => {
@@ -538,6 +559,7 @@ routes.admin = () => {
         <td class="muted">${new Date(u.created_at).toLocaleDateString('es-ES')}</td>
         <td>${u.banned ? '<span class="tag loss">BANEADO</span>' : u.online ? '<span class="tag win">EN LÍNEA</span>' : '<span class="muted">—</span>'}</td>
         <td>${u.id === state.me.id ? '<span class="muted">(tú)</span>' : `<div class="row" style="flex-wrap:nowrap">
+          ${u.banned ? '' : `<button class="btn btn-sm btn-gold" data-gift="${u.id}" data-name="${esc(u.username)}">🎁 Regalar</button>`}
           <button class="btn btn-sm" data-ban="${u.id}" data-v="${u.banned ? '0' : '1'}">${u.banned ? 'Desbanear' : 'Banear'}</button>
           <button class="btn btn-sm btn-danger" data-del="${u.id}" data-name="${esc(u.username)}">Borrar</button></div>`}</td></tr>`).join('')}
       </tbody></table>`;
@@ -548,7 +570,20 @@ routes.admin = () => {
   $('#adm-users').addEventListener('click', async (e) => {
     const ban = e.target.closest('[data-ban]');
     const del = e.target.closest('[data-del]');
+    const gift = e.target.closest('[data-gift]');
     try {
+      if (gift) {
+        const m = modal(`<h2>🎁 Regalar a ${esc(gift.dataset.name)}</h2>
+          <form class="grid" id="gift-form">${giftFields()}
+          <div class="modal-actions"><button type="button" class="btn" data-close>Cancelar</button><button class="btn btn-gold">Regalar</button></div></form>`);
+        $('#gift-form', m.el).onsubmit = async (ev) => {
+          ev.preventDefault();
+          try {
+            await api('POST', `/api/admin/users/${gift.dataset.gift}/gift`, giftBody(ev.target));
+            m.close(); toast(`Regalo enviado a ${gift.dataset.name}`); sfx.coins(); load();
+          } catch (err) { toast(err.message, 'err'); }
+        };
+      }
       if (ban) {
         const banned = ban.dataset.v === '1';
         if (banned && !(await confirmModal('Banear cuenta', 'El usuario será desconectado y no podrá iniciar sesión hasta que lo desbanees.', { okText: 'Banear', danger: true }))) return;
@@ -571,6 +606,14 @@ routes.admin = () => {
     try {
       const r = await api('POST', '/api/admin/coins', { mode: fd.get('mode'), amount: Number(fd.get('amount')) });
       setCoins(r.coins); $('#adm-coins').textContent = r.coins; sfx.coins(); toast('Saldo actualizado'); load();
+    } catch (err) { toast(err.message, 'err'); }
+  };
+  $('#gift-all-form').onsubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const r = await api('POST', '/api/admin/gift-online', giftBody(e.target));
+      toast(`Regalo enviado a ${r.count} jugador${r.count === 1 ? '' : 'es'} conectado${r.count === 1 ? '' : 's'}`); sfx.coins();
+      e.target.reset(); load();
     } catch (err) { toast(err.message, 'err'); }
   };
   $('#adm-refresh').onclick = () => load();

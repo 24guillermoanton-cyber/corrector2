@@ -247,6 +247,26 @@ test('administración: código validado en servidor, permisos y acciones', async
   assert.equal((await admin.post('/api/admin/coins', { mode: 'set', amount: -5 })).status, 400);
   assert.equal((await user.get('/api/me')).data.user.coins, ECONOMY.startingCoins);
 
+  // Regalos: monedas y carta a otro jugador, con aviso en tiempo real
+  const gotGift = new Promise((r) => su.once('gift', r));
+  const g = await admin.post(`/api/admin/users/${user.user.id}/gift`, { coins: 300, cardId: 'p-thibaut-courtois' });
+  assert.equal(g.status, 200);
+  const ev = await gotGift;
+  assert.equal(ev.coins, 300);
+  assert.equal(ev.card.id, 'p-thibaut-courtois');
+  const meGift = (await user.get('/api/me')).data;
+  assert.equal(meGift.user.coins, ECONOMY.startingCoins + 300);
+  assert.ok(JSON.stringify(meGift.collection).includes('p-thibaut-courtois'));
+  assert.equal((await admin.post(`/api/admin/users/${user.user.id}/gift`, { coins: -5 })).status, 400);
+  assert.equal((await admin.post(`/api/admin/users/${user.user.id}/gift`, { cardId: 'no-existe' })).status, 400);
+  assert.equal((await admin.post(`/api/admin/users/${user.user.id}/gift`, {})).status, 400);
+  assert.equal((await user.post(`/api/admin/users/${user.user.id}/gift`, { coins: 100 })).status, 403);
+  // A todos los conectados (el usuario está conectado)
+  const all = await admin.post('/api/admin/gift-online', { coins: 50 });
+  assert.equal(all.status, 200);
+  assert.ok(all.data.count >= 1);
+  assert.equal((await user.get('/api/me')).data.user.coins, ECONOMY.startingCoins + 350);
+
   // Banear: se cierra su sesión, su socket y no puede volver a entrar
   const disconnected = new Promise((r) => su.on('disconnect', r));
   assert.equal((await admin.post(`/api/admin/users/${user.user.id}/ban`, { banned: true })).status, 200);

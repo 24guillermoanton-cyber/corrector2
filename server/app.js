@@ -6,7 +6,7 @@ import express from 'express';
 import { Server } from 'socket.io';
 import * as auth from './auth.js';
 import * as game from './game.js';
-import { CARDS } from './cards.js';
+import { CARDS, CARD_BY_ID } from './cards.js';
 import { CRESTS, ECONOMY, MATCH, PACKS, PICK, SHOT, TIERS, ZONES } from './config.js';
 import { createMatchManager } from './match.js';
 
@@ -255,6 +255,40 @@ export function createApp({ db, rng, timing } = {}) {
     await adminLog(req.user, mode === 'set' ? 'fijar monedas propias' : 'añadir monedas propias', req.user.username,
       { amount: n, result: u.coins });
     res.json({ coins: u.coins });
+  }));
+
+  // Regalos del administrador: monedas y/o una carta a un jugador o a todos los conectados.
+  function parseGift(body) {
+    const coins = body?.coins == null || body.coins === '' ? 0 : Number(body.coins);
+    const cardId = body?.cardId ? String(body.cardId) : null;
+    if (!Number.isInteger(coins) || coins < 0 || coins > ECONOMY.adminMaxCoinsAdjust) throw new game.GameError('Cantidad de monedas no válida');
+    if (cardId && !CARD_BY_ID.has(cardId)) throw new game.GameError('Carta no válida');
+    if (!coins && !cardId) throw new game.GameError('Elige monedas o una carta para regalar');
+    return { coins, card: cardId ? CARD_BY_ID.get(cardId) : null };
+  }
+  async function giveGift(admin, user, { coins, card }) {
+    await db.tx(async ({ query: q }) => {
+      if (coins) await q('UPDATE users SET coins = coins + $2 WHERE id=$1', [user.id, coins]);
+      if (card) await q('INSERT INTO user_cards (user_id, card_id, source) VALUES ($1,$2,$3)', [user.id, card.id, `admin:${admin.id}`]);
+    });
+    await adminLog(admin, 'regalo', user.username, { coins: coins || undefined, card: card?.id });
+    io.to(`u:${user.id}`).emit('gift', { from: admin.username, coins, card: card && { id: card.id, name: card.name } });
+  }
+  app.post('/api/admin/users/:id/gift', requireAdmin(async (req, res) => {
+    const gift = parseGift(req.body);
+    const [u] = await db.query('SELECT id, username, banned FROM users WHERE id=$1', [Number(req.params.id) || 0]);
+    if (!u) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (u.banned) return res.status(400).json({ error: 'No puedes regalar a una cuenta baneada' });
+    await giveGift(req.user, u, gift);
+    res.json({ ok: true, count: 1 });
+  }));
+  app.post('/api/admin/gift-online', requireAdmin(async (req, res) => {
+    const gift = parseGift(req.body);
+    const ids = manager.onlineIds().filter((id) => id !== req.user.id);
+    if (!ids.length) return res.status(400).json({ error: 'No hay otros jugadores conectados' });
+    const users = await db.query('SELECT id, username FROM users WHERE id = ANY($1::int[]) AND NOT banned', [ids]);
+    for (const u of users) await giveGift(req.user, u, gift);
+    res.json({ ok: true, count: users.length });
   }));
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'No encontrado' }));
