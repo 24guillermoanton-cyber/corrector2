@@ -36,11 +36,9 @@ export function saveChance(shooter, keeper, zone, power) {
   return clamp(p, s.min, s.max);
 }
 
-export function secondDiveWindow(keeper, power) {
-  const s = SHOT.second;
-  if (!s.tiers.includes(keeper.tier)) return 0;
-  if (keeper.stats.reincorporacion < s.minRecovery || power > s.maxPower) return 0;
-  return clamp(Math.round(s.baseMs + (keeper.stats.reincorporacion - power) * s.perPointMs), s.minMs, s.maxMs);
+// Doble parada: solo porteros buenos (oro o superior), y aun así con una probabilidad (40 %).
+export function canDoubleSave(keeper) {
+  return SHOT.second.tiers.includes(keeper.tier);
 }
 
 // Comprueba si la tanda ha terminado. Devuelve el lado ganador (0/1) o null.
@@ -114,6 +112,9 @@ export function createMatchManager({ io, db, rng = Math.random, timing = MATCH }
       if (c.phase === 'second') {
         cur.firstDive = c.dive;
         cur.windowMs = c.windowMs;
+        cur.minigameMs = T.minigameMs ?? SHOT.second.minigameMs;
+        cur.diveMs = T.diveMs ?? SHOT.second.diveMs;
+        cur.circles = SHOT.second.patternCircles;
         cur.introMs = T.secondPhaseIntroMs;
         if (role === 'shoot') cur.yourChoice = c.shot;
       }
@@ -266,9 +267,10 @@ export function createMatchManager({ io, db, rng = Math.random, timing = MATCH }
       c.saveP = saveChance(shooter, keeper, c.shot, c.power);
       return finishKick(room, random() < c.saveP ? 'parada' : 'gol');
     }
-    const windowMs = secondDiveWindow(keeper, c.power);
-    if (!windowMs) return finishKick(room, 'gol');
-    // Segunda estirada: solo el portero puede actuar; la zona del disparo sigue oculta.
+    if (!canDoubleSave(keeper) || random() >= SHOT.second.chance) return finishKick(room, 'gol');
+    // Doble parada: el portero hace el minijuego y, si lo completa, tiene 1 s para volver a tirarse.
+    // Solo el portero puede actuar; la zona del disparo sigue oculta.
+    const windowMs = (T.minigameMs ?? SHOT.second.minigameMs) + (T.diveMs ?? SHOT.second.diveMs);
     c.phase = 'second';
     c.windowMs = windowMs;
     c.deadline = now() + T.secondPhaseIntroMs + windowMs + T.networkGraceMs;

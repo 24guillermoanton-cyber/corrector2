@@ -143,11 +143,11 @@ test('segunda estirada del portero (reincorporación alta + disparo flojo)', asy
   assert.equal(sa.results[0].kick.second, false);
 
   // Kick 1: Molina tira a la media izquierda (2); Costa se tira a la derecha (3)
-  await playKick(sa, sb, 1, { zone: 2, dive: 3, rolls: [0.5, 0.99], srv });
+  await playKick(sa, sb, 1, { zone: 2, dive: 3, rolls: [0.5, 0.99, 0.0], srv });
   await waitFor(() => sa.last.cur?.phase === 'second', { msg: 'ventana de segunda estirada' });
   const kv = sa.last.cur;
   assert.equal(kv.role, 'save');
-  assert.ok(kv.windowMs >= 700, 'ventana mínima');
+  assert.ok(kv.minigameMs > 0 && kv.diveMs === 1000, 'minijuego + 1 segundo');
   assert.equal(kv.firstDive, 3);
   assert.equal(kv.yourChoice, 3);
   assert.equal(JSON.stringify(sa.last).includes('"shot"'), false, 'la zona del disparo sigue oculta');
@@ -167,7 +167,7 @@ test('segunda estirada del portero (reincorporación alta + disparo flojo)', asy
 
   // Kick 2 normal, kick 3: segunda estirada que expira sin respuesta -> gol
   await playKick(sa, sb, 2, { zone: 1, dive: 0, srv });
-  await playKick(sa, sb, 3, { zone: 4, dive: 1, rolls: [0.5, 0.99], srv });
+  await playKick(sa, sb, 3, { zone: 4, dive: 1, rolls: [0.5, 0.99, 0.0], srv });
   await waitFor(() => sa.last.cur?.phase === 'second');
   const t0 = Date.now();
   await waitFor(() => sa.results.length === 4, { msg: 'expira la ventana' });
@@ -178,17 +178,12 @@ test('segunda estirada del portero (reincorporación alta + disparo flojo)', asy
   a.closeAll(); b.closeAll();
 });
 
-test('la potencia reduce la ventana de la segunda estirada', async () => {
-  const { secondDiveWindow } = await import('../server/match.js');
-  const keeper = { tier: 'oro', stats: { reincorporacion: 90 } };
-  const slow = secondDiveWindow(keeper, 50);
-  const medium = secondDiveWindow(keeper, 70);
-  const strong = secondDiveWindow(keeper, 85);
-  assert.ok(slow > medium, 'disparo flojo = más tiempo');
-  assert.equal(strong, 0, 'disparo potente = sin segunda estirada');
-  assert.equal(secondDiveWindow({ tier: 'oro', stats: { reincorporacion: 60 } }, 50), 0, 'reincorporación baja = sin segunda estirada');
-  assert.equal(secondDiveWindow({ tier: 'plata', stats: { reincorporacion: 99 } }, 50), 0, 'portero de plata = sin segunda estirada');
-  assert.equal(secondDiveWindow({ tier: 'bronce', stats: { reincorporacion: 99 } }, 50), 0, 'portero de bronce = sin segunda estirada');
+test('doble parada: solo porteros de oro o superior, con un 40 % de probabilidad', async () => {
+  const { canDoubleSave } = await import('../server/match.js');
+  const { SHOT } = await import('../server/config.js');
+  assert.equal(SHOT.second.chance, 0.4);
+  for (const tier of ['oro', 'elite', 'toty', 'futties', 'icono']) assert.equal(canDoubleSave({ tier }), true, tier);
+  for (const tier of ['bronce', 'plata']) assert.equal(canDoubleSave({ tier }), false, tier);
 });
 
 test('desconexión: pausa, reconexión y derrota si no vuelve', async () => {

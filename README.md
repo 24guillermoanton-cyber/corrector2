@@ -54,7 +54,7 @@ npm test
 Arrancan el servidor real con una base de datos PGlite en memoria y clientes Socket.IO. Cubren, entre otras cosas:
 
 - Tanda completa 5-4 entre dos usuarios, final anticipado 3-0 y empate 5-5 con muerte súbita.
-- Segunda estirada (aparece, oculta la zona del disparo, solo el portero puede actuar, parada y caducidad de la ventana) y su relación con la potencia.
+- Segunda estirada (aparece, oculta la zona del disparo, solo el portero puede actuar, parada y caducidad de la ventana) y la probabilidad de doble parada.
 - Decisiones ocultas del rival, desconexión con pausa/reconexión y derrota por abandono.
 - Recompensas entregadas una sola vez.
 - Compra y apertura de sobres, compras simultáneas sin saldo negativo, probabilidades.
@@ -105,13 +105,14 @@ Estadísticas (escala 1-99):
 Resolución (valores en `server/config.js → SHOT`):
 1. **Potencia del disparo** = potencia del lanzador + aleatorio entre −10 y +5.
 2. **Fuera**: probabilidad = base por altura (arriba 12 %, media 5 %, abajo 6 %) × (110 − precisión) / 50.
-3. **Si el portero adivina la zona**: parada = 40 % + 0,8 %·(parada−50) + 0,4 %·(reflejos−50) − 0,6 %·(potencia−50) − 0,4 %·(calidad−50) + ajuste de altura (escuadras −12 %, abajo +5 %), limitado entre 10 % y 90 %.
+3. **Si el portero adivina la zona**: parada = 70 % + 0,8 %·(parada−50) + 0,4 %·(reflejos−50) − 0,6 %·(potencia−50) − 0,4 %·(calidad−50) + ajuste de altura (escuadras −12 %, abajo +5 %), limitado entre 45 % y 95 %.
 4. **Si se equivoca**: es gol, salvo que se active la segunda estirada.
 
-### ⚡ Segunda estirada (reincorporación)
-Solo para porteros **de oro o superior** (bronce y plata no). Se activa si el portero se tiró al lugar equivocado, su **reincorporación ≥ 70** y la **potencia del disparo ≤ 80**. El portero ve una ventana breve para elegir otra dirección (la zona del disparo sigue oculta):
+### ⚡ ¡Doble parada!
+Solo para porteros **de oro o superior** (bronce y plata no). Si el portero se tira al lado equivocado, hay un **40 %** de probabilidad de que aparezca **¡DOBLE PARADA!** (la zona del disparo sigue oculta):
 
-- Duración = 700 ms + 55 ms × (reincorporación − potencia), entre 700 y 2400 ms (+ un pequeño margen por latencia). **Cuanto más potente el disparo, menos tiempo.**
+- El portero tiene 3 segundos para tocar en orden 5 círculos numerados (minijuego tipo Pokémon GO).
+- Si lo completa, tiene **1 segundo** para volver a tirarse a otra zona.
 - Si acierta la zona, la probabilidad de parada es el 65 % de la normal.
 
 El juego incluye un tutorial (se muestra la primera vez y está en *Cómo se juega*).

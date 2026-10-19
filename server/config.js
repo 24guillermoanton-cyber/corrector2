@@ -81,24 +81,22 @@ export const SHOT = {
   powerJitter: [-10, 5],
   // Parada cuando el portero adivina la zona:
   save: {
-    base: 0.40,
+    base: 0.70,
     perParada: 0.008,     // por punto de "parada" sobre 50
     perReflejos: 0.004,   // por punto de "reflejos" sobre 50
     perPotencia: -0.006,  // por punto de potencia del disparo sobre 50
     perCalidad: -0.004,   // por punto de calidad de lanzamiento sobre 50
     rowBonus: [-0.12, 0, 0.05], // escuadras más difíciles, abajo algo más fácil
-    min: 0.10,
-    max: 0.90,
+    min: 0.45,
+    max: 0.95,
   },
   // Segunda estirada (reincorporación)
   second: {
     tiers: ['oro', 'elite', 'toty', 'futties', 'icono'], // solo porteros dorados o superiores (bronce y plata no)
-    minRecovery: 70,      // reincorporación mínima del portero
-    maxPower: 80,         // potencia máxima del disparo concreto
-    baseMs: 700,          // ventana = baseMs + (reincorporación - potencia) * perPointMs
-    perPointMs: 55,
-    minMs: 700,
-    maxMs: 2_400,
+    chance: 0.40,         // probabilidad de "¡DOBLE PARADA!" si un portero bueno falla el lado
+    patternCircles: 5,    // círculos del minijuego (tocarlos en orden)
+    minigameMs: 3_000,    // tiempo para completar el patrón
+    diveMs: 1_000,        // si lo completas: 1 segundo para volver a tirarte
     saveFactor: 0.65,     // la parada en segunda estirada es más difícil
   },
 };

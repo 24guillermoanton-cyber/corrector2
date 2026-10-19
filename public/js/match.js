@@ -336,32 +336,97 @@ function createMatch(app, ctx) {
     keeperTo(c.firstDive); sfx.dive();
     await sleep(Math.max(200, (c.introMs || 1300) - 520));
     if (destroyed || st.cur?.phase !== 'second') return;
-    const windowMs = c.windowMs;
     el.second.hidden = false;
-    if (c.role === 'save') {
-      el.second.innerHTML = `⚡ ¡REINCORPÓRATE! Elige otra dirección<div class="bar"><i id="sbar"></i></div>`;
-      el.msg.textContent = '¡Segunda estirada! Rápido';
-      zones.forEach((zb) => {
-        const z = Number(zb.dataset.z);
-        zb.disabled = z === c.firstDive;
-        zb.classList.toggle('hide', z === c.firstDive);
-        zb.classList.add('keeper-mode', 'urgent');
-        zb.classList.remove('selected');
-      });
-      sfx.alarm();
-    } else {
-      el.second.innerHTML = `😱 ¡El portero intenta reincorporarse!<div class="bar"><i id="sbar"></i></div>`;
+    el.big.className = 'big-text double'; el.big.innerHTML = '<span>¡DOBLE PARADA!</span>';
+    sfx.alarm(); sfx.sparkle();
+    setTimeout(() => { if (el.big.classList.contains('double')) { el.big.className = 'big-text'; el.big.innerHTML = ''; } }, 1100);
+    if (c.role !== 'save') {
+      el.second.innerHTML = `😱 ¡DOBLE PARADA! El portero intenta reincorporarse…<div class="bar"><i id="sbar"></i></div>`;
       el.msg.textContent = 'El portero se levanta…';
+      runBar(c.windowMs);
+      return;
     }
+    // Minijuego: tocar los círculos en orden antes de que se acabe el tiempo.
+    el.msg.textContent = '¡Toca los círculos en orden!';
+    el.second.innerHTML = `⚡ ¡Completa el patrón!<div class="bar"><i id="sbar"></i></div>`;
+    runBar(c.minigameMs);
+    const done = await playPattern(c.circles || 5, c.minigameMs);
+    el.big.className = 'big-text'; el.big.innerHTML = '';
+    if (destroyed || st.cur?.phase !== 'second') return;
+    if (!done) {
+      el.second.innerHTML = '❌ ¡No llegaste a tiempo!';
+      el.msg.textContent = 'Sin segunda estirada';
+      sfx.miss();
+      return;
+    }
+    // Patrón completado: 1 segundo para volver a tirarse.
+    el.second.innerHTML = `🧤 ¡TÍRATE YA! Elige otra dirección<div class="bar"><i id="sbar"></i></div>`;
+    el.msg.textContent = '¡Rápido, 1 segundo!';
+    zones.forEach((zb) => {
+      const z = Number(zb.dataset.z);
+      zb.disabled = z === c.firstDive;
+      zb.classList.toggle('hide', z === c.firstDive);
+      zb.classList.add('keeper-mode', 'urgent');
+      zb.classList.remove('selected');
+    });
+    sfx.alarm();
+    runBar(c.diveMs);
+    setTimeout(() => {
+      if (st.cur?.phase === 'second' && !zones.some((zb) => zb.classList.contains('selected'))) {
+        disableZones(true);
+        el.second.innerHTML = '⏱ ¡Se acabó el segundo!';
+      }
+    }, c.diveMs);
+  }
+
+  function runBar(ms) {
     const bar = $('#sbar');
+    if (!bar) return;
     const t0 = performance.now();
     const tick = () => {
-      if (destroyed || el.second.hidden) return;
-      const f = Math.max(0, 1 - (performance.now() - t0) / windowMs);
+      if (destroyed || el.second.hidden || !bar.isConnected) return;
+      const f = Math.max(0, 1 - (performance.now() - t0) / ms);
       bar.style.transform = `scaleX(${f})`;
       if (f > 0) requestAnimationFrame(tick);
     };
     tick();
+  }
+
+  // Círculos numerados en posiciones aleatorias sobre el campo (como los ataques cargados de Pokémon GO).
+  function playPattern(n, ms) {
+    return new Promise((resolve) => {
+      const layer = document.createElement('div');
+      layer.className = 'pattern-layer';
+      const pts = [];
+      while (pts.length < n) {
+        const p = { x: 14 + Math.random() * 72, y: 22 + Math.random() * 56 };
+        if (pts.every((q) => Math.hypot(q.x - p.x, (q.y - p.y) * 0.7) > 14)) pts.push(p);
+      }
+      layer.innerHTML = pts.map((p, i) => `<button class="pattern-dot ${i === 0 ? 'next' : ''}" style="left:${p.x}%;top:${p.y}%;animation-delay:${i * 0.06}s" data-i="${i}">${i + 1}</button>`).join('');
+      el.pitch.appendChild(layer);
+      let nextI = 0, finished = false;
+      const end = (ok) => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        layer.classList.add(ok ? 'win' : 'fail');
+        setTimeout(() => layer.remove(), 350);
+        resolve(ok);
+      };
+      const timer = setTimeout(() => end(false), ms);
+      layer.addEventListener('pointerdown', (e) => {
+        const b = e.target.closest('.pattern-dot');
+        if (!b || finished) return;
+        e.preventDefault();
+        if (Number(b.dataset.i) !== nextI) { b.classList.add('wrong'); sfx.tick(); setTimeout(() => b.classList.remove('wrong'), 250); return; }
+        b.classList.add('hit'); b.classList.remove('next');
+        sfx.select();
+        burst(el.pitch, { count: 10, colors: ['#ffd54a', '#fff', '#27e36f'], spread: 80, x: b.style.left, y: b.style.top });
+        nextI++;
+        layer.querySelector(`[data-i="${nextI}"]`)?.classList.add('next');
+        if (nextI >= n) end(true);
+      });
+    });
   }
 
   // ---------------- Interacción ----------------
@@ -383,16 +448,15 @@ function createMatch(app, ctx) {
     if (c.phase !== 'choose' || c.youChose || c.paused) return;
     selected = z;
     sfx.select();
-    ctx.emit('match:mark', { zone: z });
-    zones.forEach((zb) => zb.classList.toggle('selected', Number(zb.dataset.z) === z));
-    renderControls();
+    zones.forEach((zb) => { zb.classList.toggle('selected', Number(zb.dataset.z) === z); zb.disabled = true; });
+    confirmChoice();
   }
   async function confirmChoice() {
     if (selected == null) return;
     const btn = $('#confirm');
     if (btn) btn.disabled = true;
     const r = await ctx.emit('match:choose', { zone: selected });
-    if (!r.ok) { toast(r.error, 'err'); if (btn) btn.disabled = false; }
+    if (!r.ok) { toast(r.error, 'err'); if (btn) btn.disabled = false; zones.forEach((zb) => { zb.disabled = false; }); }
     else sfx.click();
   }
 
@@ -401,8 +465,7 @@ function createMatch(app, ctx) {
     let html = '';
     if (st.status === 'playing' && c?.phase === 'choose' && !c.paused) {
       if (!c.youChose) {
-        html = `<button class="btn btn-primary btn-lg" id="confirm" ${selected == null ? 'disabled' : ''}>
-          ${c.role === 'shoot' ? '✅ Confirmar disparo' : '🧤 Confirmar estirada'}${selected != null ? ` · ${ZONE_NAMES[selected]}` : ''}</button>`;
+        html = `<span class="chip">${c.role === 'shoot' ? '👆 Toca una zona de la portería para chutar' : '👆 Toca una zona para tirarte'}</span>`;
       } else {
         html = `<span class="chip">✔ Elección confirmada: ${ZONE_NAMES[c.yourChoice]}</span>
           <span class="chip">${c.opponentChose ? '🔒 El rival ya ha decidido' : '⏳ El rival está pensando…'}</span>`;
