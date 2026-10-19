@@ -191,7 +191,7 @@ export function createApp({ db, rng, timing } = {}) {
   // ---------------- Player picks ----------------
   app.get('/api/picks', requireUser(async (req, res) => {
     const [u] = await db.query('SELECT streak FROM users WHERE id=$1', [req.user.id]);
-    res.json({ picks: await game.listPicks(db, req.user.id), streak: u.streak, winsNeeded: PICK.winsNeeded });
+    res.json({ picks: await game.listPicks(db, req.user.id), streak: u.streak, winsNeeded: PICK.winsNeeded, levels: PICK.levels });
   }));
   app.post('/api/picks/:id/claim', requireUser(async (req, res) => {
     const card = await game.claimPick(db, req.user.id, Number(req.params.id) || 0, req.body?.cardId);

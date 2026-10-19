@@ -1,8 +1,8 @@
 // Lógica de juego persistente: sobres, colección, alineación, recompensas y player picks.
 // Todo se decide en el servidor dentro de transacciones.
 import crypto from 'node:crypto';
-import { CARD_BY_ID, cardsOf } from './cards.js';
-import { ECONOMY, PACKS, PICK } from './config.js';
+import { CARDS, CARD_BY_ID, cardsOf } from './cards.js';
+import { ECONOMY, PACKS, PICK, pickLevel } from './config.js';
 
 export class GameError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -138,13 +138,15 @@ export async function startMatchRecord(db, { id, code, home, away }) {
                   VALUES ($1,$2,$3,$4,$5,$6,'playing')`, [id, code, home.id, away.id, home.name, away.name]);
 }
 
-function generatePickOptions() {
-  const chosen = new Set();
+function generatePickOptions(level = pickLevel(null)) {
+  const pool = CARDS.filter((c) => c.rating >= level.min && c.rating <= level.max);
   const out = [];
-  for (let i = 0; i < PICK.options; i++) {
-    const type = crypto.randomInt(0, 2) === 0 ? 'jugador' : 'portero';
-    const c = drawCard(type, PICK.odds, chosen);
-    chosen.add(c.id); out.push(c.id);
+  for (let i = 0; i < PICK.options && pool.length; i++) {
+    const weights = pool.map((c) => PICK.weightPerPoint ** (c.rating - level.min));
+    let x = secureRandom() * weights.reduce((a, b) => a + b, 0);
+    let k = 0;
+    while (k < pool.length - 1 && x >= weights[k]) x -= weights[k++];
+    out.push(pool.splice(k, 1)[0].id);
   }
   return out;
 }
@@ -161,8 +163,9 @@ export async function finishMatch(db, { matchId, winnerId, loserId, reason, home
                          coins = coins + $2 WHERE id=$1 RETURNING streak`, [winnerId, ECONOMY.winReward]);
     if (w.length) {
       rewards[winnerId] = { coins: ECONOMY.winReward, result: 'victoria', streak: w[0].streak, newPick: null };
-      if (w[0].streak > 0 && w[0].streak % PICK.winsNeeded === 0) {
-        const options = generatePickOptions();
+      const level = pickLevel(w[0].streak);
+      if (level) {
+        const options = generatePickOptions(level);
         const [pk] = await q('INSERT INTO player_picks (user_id, options, streak_at) VALUES ($1,$2,$3) RETURNING id',
           [winnerId, JSON.stringify(options), w[0].streak]);
         rewards[winnerId].newPick = pk.id;

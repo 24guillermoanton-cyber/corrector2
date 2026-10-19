@@ -150,19 +150,39 @@ test('player pick tras tres victorias seguidas', async () => {
   const steal = await opp.post(`/api/picks/${picks.picks[0].id}/claim`, { cardId: options[0] });
   assert.equal(steal.status, 404);
 
-  // Dos victorias más (racha 5), luego una derrota rompe el progreso
+  // Opciones del pick de 3 victorias: media máxima 85
+  const { CARD_BY_ID } = await import('../server/cards.js');
+  assert.ok(options.every((id) => CARD_BY_ID.get(id).rating <= 85), 'pick de 3 victorias: máx. 85');
+
+  // Dos victorias más (racha 5): pick de media máxima 88
   await quickWin(p, opp); await quickWin(p, opp);
-  assert.equal((await p.get('/api/picks')).data.streak, 5);
+  picks = (await p.get('/api/picks')).data;
+  assert.equal(picks.streak, 5);
+  assert.equal(picks.picks.length, 2);
+  assert.ok(picks.picks[0].options.every((id) => CARD_BY_ID.get(id).rating <= 88), 'pick de 5 victorias: máx. 88');
+  // Una derrota rompe la racha; los picks conseguidos siguen ahí
   await quickWin(opp, p);
   assert.equal((await p.get('/api/picks')).data.streak, 0);
-  // Tres victorias más: nuevo pick; el anterior sigue registrado
   await quickWin(p, opp); await quickWin(p, opp); await quickWin(p, opp);
   picks = (await p.get('/api/picks')).data.picks;
-  assert.equal(picks.length, 2);
-  assert.equal(picks.filter((x) => !x.claimedCard).length, 1);
-  // Varios picks pendientes se acumulan hasta reclamarlos
-  await quickWin(p, opp); await quickWin(p, opp); await quickWin(p, opp);
+  assert.equal(picks.length, 3);
   assert.equal((await p.get('/api/me')).data.pendingPicks, 2);
+});
+
+test('pick de 10 victorias seguidas: media mínima 89', async () => {
+  const { pickLevel } = await import('../server/config.js');
+  const { CARD_BY_ID } = await import('../server/cards.js');
+  const p = await newUser(srv, 'p10');
+  await srv.db.query('UPDATE users SET streak=9 WHERE id=$1', [p.user.id]);
+  const opp = await newUser(srv, 'o10');
+  await giveLineup(srv, p, 'j-harry-kane', 'p-jan-oblak');
+  await giveLineup(srv, opp, 'j-harry-kane', 'p-jan-oblak');
+  const r = await quickWin(p, opp);
+  assert.ok(r.rewards.newPick);
+  const pk = (await p.get('/api/picks')).data.picks[0];
+  assert.ok(pk.options.every((id) => CARD_BY_ID.get(id).rating >= 89));
+  assert.equal(pickLevel(6), null);
+  assert.equal(pickLevel(20).min, 89);
 });
 
 test('los datos se conservan tras cerrar sesión', async () => {

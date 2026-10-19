@@ -446,12 +446,18 @@ routes.tienda = () => {
   draw();
 };
 
+function pickLevelsText() {
+  const l = state.meta.pick.levels || [];
+  return l.map((x, i) => `${x.wins} victorias seguidas: pick de media ${i === l.length - 1 ? `${x.min}+` : `hasta ${x.max}`}`).join(' · ')
+    + (l.length ? ` (y cada ${l.at(-1).wins} más).` : '');
+}
+
 // ---------------------------------------------------------------------
 //  Player picks
 // ---------------------------------------------------------------------
 routes.picks = () => {
   app.innerHTML = `<div class="fade-in"><div class="screen-title"><div><h1>Player picks</h1>
-    <p class="muted">Gana ${state.meta.pick.winsNeeded} partidos seguidos y elige 1 de 3 cartas. Perder rompe el progreso hacia el siguiente pick, pero los que ya has conseguido no caducan.</p></div></div>
+    <p class="muted">${pickLevelsText()} Elige 1 de 3 cartas. Perder rompe el progreso hacia el siguiente pick, pero los que ya has conseguido no caducan.</p></div></div>
     <div id="picks-body"><div class="spinner"></div></div></div>`;
   const load = async () => {
     const { picks, streak } = await api('GET', '/api/picks');
@@ -644,7 +650,7 @@ function tutorialHTML() {
     <div class="tut-step"><div class="n">5</div><div><b>⚡ Segunda estirada (reincorporación)</b><p>Si tu portero es <b>de oro o superior</b>, se tira al lado equivocado, tiene <b>reincorporación ≥ ${s.second.minRecovery}</b> y el disparo rival lleva <b>potencia ≤ ${s.second.maxPower}</b>, aparecerá una ventana breve: ¡elige otra dirección antes de que se agote la barra! Si aciertas, puedes pararlo (con un ${Math.round(s.second.saveFactor * 100)}% de la probabilidad normal).</p>
       <div class="formula">Tiempo de la ventana = ${s.second.baseMs} ms + ${s.second.perPointMs} ms × (reincorporación − potencia del disparo), entre ${s.second.minMs} y ${s.second.maxMs} ms<br>
       Cuanto más potente es el disparo, menos tiempo tienes para reaccionar. La potencia de cada disparo varía un poco (${s.powerJitter[0]} a +${s.powerJitter[1]}).</div></div></div>
-    <div class="tut-step"><div class="n">6</div><div><b>Premios</b><p>Victoria: +${state.meta.economy.winReward} 🪙 · Derrota: +${state.meta.economy.lossReward} 🪙 · Abandono: 0. Cada ${state.meta.pick.winsNeeded} victorias seguidas consigues un <b>player pick</b>. Si te desconectas más de 30 s durante un partido, pierdes por abandono.</p></div></div>
+    <div class="tut-step"><div class="n">6</div><div><b>Premios</b><p>Victoria: +${state.meta.economy.winReward} 🪙 · Derrota: +${state.meta.economy.lossReward} 🪙 · Abandono: 0. ${pickLevelsText()} Si te desconectas más de 30 s durante un partido, pierdes por abandono.</p></div></div>
   </div>`;
 }
 function showTutorial(firstTime) {

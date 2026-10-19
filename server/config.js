@@ -5,7 +5,7 @@
 
 export const ECONOMY = {
   startingCoins: 1000,     // monedas al crear la cuenta (da para los dos primeros sobres Bronce)
-  winReward: 150,          // monedas por ganar una tanda
+  winReward: 250,          // monedas por ganar una tanda
   lossReward: 50,          // monedas por perderla (si no abandonas)
   abandonReward: 0,        // monedas para quien abandona o se desconecta
   // Venta rápida de cartas repetidas (solo copias sobrantes)
@@ -33,24 +33,39 @@ export const PACKS = [
     odds: { bronce: 25, plata: 50, oro: 22, elite: 3, toty: 0, futties: 0 } },
   { id: 'oro', name: 'Sobre Oro', price: 4000,
     odds: { bronce: 0, plata: 30, oro: 55, elite: 12, toty: 1.5, futties: 1.5 } },
-  { id: 'elite', name: 'Sobre Élite', price: 10000,
+  { id: 'elite', name: 'Sobre Élite', price: 150000,
     odds: { bronce: 0, plata: 0, oro: 50, elite: 38, toty: 6, futties: 6 } },
   { id: 'icono', name: 'Sobre Icono', price: 500000,
     odds: { icono: 100 } },
 ];
 
-// Player pick: cada 3 victorias seguidas. Probabilidades de cada una de las 3 opciones.
+// Player picks por racha de victorias seguidas. Cada pick ofrece 3 cartas dentro de un rango
+// de media; dentro del rango, cuanto más alta la media, menos probable (factor por punto).
 export const PICK = {
-  winsNeeded: 3,
+  winsNeeded: 3,            // primer pick (se usa en los textos y el progreso)
   options: 3,
-  odds: { bronce: 0, plata: 0, oro: 55, elite: 33, toty: 6, futties: 6 },
+  levels: [
+    { wins: 3, min: 75, max: 85 },
+    { wins: 5, min: 80, max: 88 },
+    { wins: 10, min: 89, max: 99 },  // y cada 10 victorias más (20, 30…)
+  ],
+  weightPerPoint: 0.8,
 };
+
+// Rango de un pick según la racha (null si esa racha no da pick). Los picks del admin usan el mejor.
+export function pickLevel(streak) {
+  if (streak == null) return PICK.levels.at(-1);
+  const exact = PICK.levels.find((l) => l.wins === streak);
+  if (exact) return exact;
+  const top = PICK.levels.at(-1);
+  return streak > top.wins && streak % top.wins === 0 ? top : null;
+}
 
 // Reglas de la tanda y tiempos (milisegundos).
 export const MATCH = {
   kicksPerTeam: 5,
   chooseMs: Number(process.env.MATCH_CHOOSE_MS) || 15_000, // tiempo para elegir disparo / estirada
-  afterKickMs: 4_200,        // pausa para ver la animación del resultado
+  afterKickMs: 2_000,        // pausa para ver la animación del resultado
   secondPhaseIntroMs: 1_300, // carrera + disparo + primera estirada antes de la ventana
   startCountdownMs: 3_500,
   disconnectGraceMs: 30_000, // tiempo para reconectar antes de perder por abandono

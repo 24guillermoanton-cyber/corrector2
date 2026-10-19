@@ -288,7 +288,7 @@ function createMatch(app, ctx) {
   async function onKick({ kick, index }) {
     // Lanzamiento resuelto en el servidor: animamos lo que ha pasado.
     animating = true;
-    animDoneAt = Date.now() + 2600;
+    animDoneAt = Date.now() + 1700;
     revealAt = Date.now() + (introFor === index ? 650 : 1000);
     disableZones(true);
     el.second.hidden = true;
@@ -316,7 +316,7 @@ function createMatch(app, ctx) {
       await playOutcome(kick, true);
     }
     el.msg.textContent = { gol: '¡Gol!', parada: '¡Parada del portero!', fuera: '¡El balón se va fuera!' }[kick.outcome];
-    await sleep(1800);
+    await sleep(900);
     animating = false;
     if (pendingEnd) showEnd(pendingEnd);
   }
