@@ -40,7 +40,8 @@ test('compra y apertura de sobres', async () => {
   const start = a.user.coins;
   const r = await a.post('/api/shop/open', { packId: 'bronce' });
   assert.equal(r.status, 200);
-  assert.equal(r.data.coins, start - 100);
+  const BRONCE = PACKS.find((p) => p.id === 'bronce').price;
+  assert.equal(r.data.coins, start - BRONCE);
   assert.equal(r.data.cards.length, 2);
   assert.deepEqual(r.data.cards.map((c) => c.type).sort(), ['jugador', 'portero']);
   const col = (await a.get('/api/collection')).data.collection;
@@ -53,13 +54,13 @@ test('compra y apertura de sobres', async () => {
   assert.equal((await a.post('/api/shop/open', { packId: 'elite' })).status, 402);
   // El cliente no puede fijar precios ni cartas: se ignoran campos extra
   const r2 = await a.post('/api/shop/open', { packId: 'bronce', price: 0, cards: ['toty-j-harry-kane'] });
-  assert.equal(r2.data.coins, start - 200);
+  assert.equal(r2.data.coins, start - 2 * BRONCE);
 });
 
 test('compras simultáneas no permiten gastar más monedas de las que hay', async () => {
   const a = await newUser(srv, 'race');
-  const price = PACKS.find((p) => p.id === 'plata').price;
-  const results = await Promise.all(Array.from({ length: 12 }, () => a.post('/api/shop/open', { packId: 'plata' })));
+  const price = PACKS.find((p) => p.id === 'bronce').price;
+  const results = await Promise.all(Array.from({ length: 12 }, () => a.post('/api/shop/open', { packId: 'bronce' })));
   const okCount = results.filter((r) => r.status === 200).length;
   assert.equal(okCount, Math.floor(ECONOMY.startingCoins / price));
   const me = (await a.get('/api/me')).data.user;
@@ -184,8 +185,9 @@ test('los datos se conservan tras reiniciar el servidor (BD en disco)', async ()
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'penalti-'));
   let s = await startServer({ dataDir: dir });
   const a = await newUser(s, 'disk');
-  await a.post('/api/shop/open', { packId: 'plata' });
+  await a.post('/api/shop/open', { packId: 'bronce' });
   const before = (await a.get('/api/me')).data;
+  assert.equal(before.collection.length > 0, true);
   await s.stop();
   s = await startServer({ dataDir: dir });
   const b = new Agent(s.base);

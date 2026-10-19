@@ -120,26 +120,28 @@ El juego incluye un tutorial (se muestra la primera vez y está en *Cómo se jue
 
 | Concepto | Valor |
 |---|---|
-| Monedas iniciales | 800 |
+| Monedas iniciales | 1000 |
 | Victoria / derrota / abandono | +150 / +50 / 0 |
 | Venta rápida de repetidas | Bronce 10 · Plata 25 · Oro 60 · Élite 120 · TOTY/FUTTIES 300 |
 
 | Sobre | Precio | Bronce | Plata | Oro | Élite | TOTY | FUTTIES |
 |---|---|---|---|---|---|---|---|
-| Bronce | 100 | 70 % | 25 % | 5 % | – | – | – |
-| Plata | 250 | 25 % | 50 % | 22 % | 3 % | – | – |
-| Oro | 600 | – | 30 % | 55 % | 12 % | 1,5 % | 1,5 % |
-| Élite | 1500 | – | – | 50 % | 38 % | 6 % | 6 % |
+| Bronce | 500 | 70 % | 25 % | 5 % | – | – | – |
+| Plata | 1500 | 25 % | 50 % | 22 % | 3 % | – | – |
+| Oro | 4000 | – | 30 % | 55 % | 12 % | 1,5 % | 1,5 % |
+| Élite | 10000 | – | – | 50 % | 38 % | 6 % | 6 % |
 
-Cada sobre da **exactamente 1 lanzador y 1 portero**; la probabilidad se aplica a cada carta por separado. Las compras se descuentan de forma atómica en la base de datos.
+Los sobres son caros a propósito: hay que ganar muchas tandas para abrir los mejores. Cada sobre da **exactamente 1 lanzador y 1 portero**; la probabilidad se aplica a cada carta por separado. Las compras se descuentan de forma atómica en la base de datos.
 
 **Player pick**: cada 3 victorias seguidas se generan y guardan 3 opciones (Oro 55 %, Élite 33 %, TOTY 6 %, FUTTIES 6 %). Las opciones no cambian al recargar, los picks pendientes no caducan y perder pone la racha a 0.
 
 **Repetidas**: se pueden vender las copias sobrantes (siempre conservas una).
 
-## 7. Cartas y datos
+## 7. Cartas, fotos y datos
 
-Los nombres son de futbolistas y porteros reales, pero **las valoraciones son orientativas de juego**, inventadas a partir de su fama como lanzadores o paradores de penaltis: **no son estadísticas verificadas ni oficiales**. Las cartas especiales (TOTY, FUTTIES) tienen estadísticas mejoradas. No se usan fotos ni logotipos: las cartas, los escudos y las figuras son ilustraciones SVG propias. Proyecto sin afiliación con clubes, ligas, EA SPORTS ni FIFA.
+Los nombres son de futbolistas y porteros reales, pero **las valoraciones son orientativas de juego**, inventadas a partir de su fama como lanzadores o paradores de penaltis: **no son estadísticas verificadas ni oficiales**. Las cartas especiales tienen estadísticas mejoradas y efectos propios: **TOTY** (azul, borde dorado giratorio, aura, estrellas y brillo holográfico) y **FUTTIES** (rosa, corazones y destellos, aura y brillo holográfico); al salir en un sobre tienen un escenario especial con aurora, temblor, halo y lluvia de partículas.
+
+**Fotos**: se usan fotos de **Wikimedia Commons** con licencia libre (Creative Commons o dominio público). Cada carta indica autor y licencia en su ficha, y hay una página *Créditos de fotos* en la colección. El listado está en `public/data/photos.json` y se regenera con `node scripts/fetch-photos.mjs`. Si un jugador no tiene foto libre, se muestra una ilustración SVG propia. No se usan fotos oficiales de clubes ni de videojuegos, ni logotipos. Proyecto sin afiliación con clubes, ligas, EA SPORTS ni FIFA.
 
 ## 8. Administración
 

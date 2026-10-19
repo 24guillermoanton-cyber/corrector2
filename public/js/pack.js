@@ -14,13 +14,15 @@ export function openPackAnimation({ pack, cards, onAgain, onCollection, onClose,
   el.className = 'opening';
   el.innerHTML = `
     <div class="tunnel">${'<div class="ring"></div>'.repeat(6)}<div class="spot s1"></div><div class="spot s2"></div><div class="floor"></div></div>
-    <div class="rays"></div><div class="flash"></div>
+    <div class="aurora"></div><div class="rays"></div><div class="halo"></div><div class="flash"></div>
     <button class="btn btn-sm skip">Saltar animación ⏭</button>
     <div class="stage"></div>`;
   document.body.appendChild(el);
   $$rings(el);
   const stage = $('.stage', el);
   const rays = $('.rays', el);
+  const halo = $('.halo', el);
+  const setSpecial = (tier) => { el.classList.remove('special-toty', 'special-futties'); halo.classList.remove('on'); if (tier) { void el.offsetWidth; el.classList.add('special-' + tier); } };
   const flash = () => { const f = $('.flash', el); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); };
   const setColor = (c) => el.style.setProperty('--tc', c);
 
@@ -41,6 +43,7 @@ export function openPackAnimation({ pack, cards, onAgain, onCollection, onClose,
 
   function summary() {
     rays.classList.remove('on');
+    setSpecial(null);
     setColor(COLOR[cards.reduce((best, c) => (QUALITY[c.tier] > QUALITY[best.tier] ? c : best), cards[0]).tier]);
     $('.skip', el).hidden = true;
     stage.innerHTML = `
@@ -65,6 +68,7 @@ export function openPackAnimation({ pack, cards, onAgain, onCollection, onClose,
     stage.innerHTML = `<div class="clue"><small>CARTA ${idx + 1} DE ${cards.length}</small><strong>${card.type === 'portero' ? 'PORTERO' : 'LANZADOR'}</strong></div>`;
     setColor('#ffffff');
     rays.classList.remove('on');
+    setSpecial(null);
     sfx.drumroll(q >= 2 ? 1.6 : 0.8);
     await wait(q >= 2 ? 1200 : 650);
     if (skipped) return;
@@ -74,6 +78,8 @@ export function openPackAnimation({ pack, cards, onAgain, onCollection, onClose,
     if (card.tier === 'toty') rain(el, { count: 60, colors: PARTICLES.toty, star: true });
     if (card.tier === 'futties') rain(el, { count: 70, colors: PARTICLES.futties });
     if (q >= 4) {
+      // Escenario especial: aurora de color, temblor, halo y lluvia continua
+      setSpecial(card.tier); sfx.boom(); sfx.sparkle();
       stage.innerHTML = `<div class="clue"><small>CARTA ESPECIAL</small><strong style="color:${COLOR[card.tier]}">${card.tier === 'toty' ? 'TEAM OF THE YEAR' : 'FUTTIES'}</strong></div>`;
       await wait(1300);
     }
@@ -93,6 +99,12 @@ export function openPackAnimation({ pack, cards, onAgain, onCollection, onClose,
     if (skipped) return;
     flash();
     if (q >= 2) rays.classList.add('on');
+    if (q >= 4) {
+      halo.classList.add('on');
+      rain(el, { count: 80, colors: PARTICLES[card.tier], star: card.tier === 'toty', duration: 4 });
+      setTimeout(() => !skipped && burst(el, { count: 60, colors: PARTICLES[card.tier], spread: 700, star: true }), 450);
+      sfx.fanfare(3);
+    }
     burst(el, { count: 16 + q * 18, colors: PARTICLES[card.tier], spread: 260 + q * 90, star: q >= 3 });
     sfx.fanfare(Math.max(1, q)); if (q >= 3) sfx.sparkle();
     stage.innerHTML = `<div class="reveal-card">${cardHTML(card, { extraClass: 'shine' })}</div>

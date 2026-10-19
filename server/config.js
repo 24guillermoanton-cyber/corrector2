@@ -4,7 +4,7 @@
 // =====================================================================
 
 export const ECONOMY = {
-  startingCoins: 800,      // monedas al crear la cuenta (da para varios sobres)
+  startingCoins: 1000,     // monedas al crear la cuenta (da para los dos primeros sobres Bronce)
   winReward: 150,          // monedas por ganar una tanda
   lossReward: 50,          // monedas por perderla (si no abandonas)
   abandonReward: 0,        // monedas para quien abandona o se desconecta
@@ -26,13 +26,13 @@ export const TIERS = {
 // Sobres: cada uno da exactamente 1 futbolista de campo y 1 portero.
 // Las probabilidades (en %) se aplican por separado a cada carta y deben sumar 100.
 export const PACKS = [
-  { id: 'bronce', name: 'Sobre Bronce', price: 100,
+  { id: 'bronce', name: 'Sobre Bronce', price: 500,
     odds: { bronce: 70, plata: 25, oro: 5, elite: 0, toty: 0, futties: 0 } },
-  { id: 'plata', name: 'Sobre Plata', price: 250,
+  { id: 'plata', name: 'Sobre Plata', price: 1500,
     odds: { bronce: 25, plata: 50, oro: 22, elite: 3, toty: 0, futties: 0 } },
-  { id: 'oro', name: 'Sobre Oro', price: 600,
+  { id: 'oro', name: 'Sobre Oro', price: 4000,
     odds: { bronce: 0, plata: 30, oro: 55, elite: 12, toty: 1.5, futties: 1.5 } },
-  { id: 'elite', name: 'Sobre Élite', price: 1500,
+  { id: 'elite', name: 'Sobre Élite', price: 10000,
     odds: { bronce: 0, plata: 0, oro: 50, elite: 38, toty: 6, futties: 6 } },
 ];
 

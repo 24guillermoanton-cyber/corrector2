@@ -1,0 +1,188 @@
+/* =====================================================================
+   CARTAS — estilo "ultimate": escudo metálico, foto a sangre fundida
+   con el fondo de la categoría y datos integrados encima.
+   ===================================================================== */
+@property --ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+
+.fcard {
+  --w: 160px; --ink: #fff; --glow: transparent; --tone: transparent;
+  --chip: rgba(0, 0, 0, 0.35); --chip-ink: #fff;
+  --shape: polygon(50% 0%, 60% 2.6%, 78% 2.6%, 86% 6.5%, 100% 6.5%, 100% 84%, 96% 89%, 64% 96%, 50% 100%, 36% 96%, 4% 89%, 0% 84%, 0% 6.5%, 14% 6.5%, 22% 2.6%, 40% 2.6%);
+  position: relative; flex: none; width: var(--w); aspect-ratio: 0.64; font-size: calc(var(--w) / 10);
+  color: var(--ink); user-select: none; transition: transform 0.2s;
+  filter: drop-shadow(0 0.35em 0.45em rgba(0, 0, 0, 0.55)) drop-shadow(0 0 0.7em var(--glow));
+}
+.fcard .fc-body { position: absolute; inset: 0; clip-path: var(--shape); background: var(--frame); }
+.fcard .fc-inner { position: absolute; inset: 0.2em; clip-path: var(--shape); background: var(--bg); overflow: hidden; }
+.fcard .fc-bgart {
+  position: absolute; inset: 0; z-index: 0;
+  background: radial-gradient(120% 55% at 50% 0%, rgba(255, 255, 255, 0.38), transparent 62%),
+              repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.07) 0 0.5em, transparent 0.5em 1.3em);
+}
+
+/* ---- Foto a sangre: se funde con el fondo por abajo y por los lados ---- */
+.fcard .fc-photo {
+  position: absolute; left: 0; right: 0; top: 5%; height: 62%; z-index: 1;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 7%, #000 52%, transparent 97%), linear-gradient(90deg, transparent 0, #000 13%, #000 87%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(180deg, transparent 0, #000 7%, #000 52%, transparent 97%), linear-gradient(90deg, transparent 0, #000 13%, #000 87%, transparent 100%);
+  mask-composite: intersect;
+}
+.fcard .fc-photo img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0%;
+  filter: saturate(1.12) contrast(1.06);
+}
+.fcard .fc-photo img.broken { display: none; }
+.fcard .fc-photo::before {
+  content: ''; position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.55) 0, rgba(0, 0, 0, 0.15) 30%, transparent 45%),
+              linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0, transparent 22%);
+}
+.fcard .fc-photo::after { content: ''; position: absolute; inset: 0; z-index: 2; background: var(--tone); mix-blend-mode: soft-light; }
+.fcard .fc-photo > svg { position: absolute; left: 18%; width: 72%; bottom: 0; height: 88%; }
+.fcard .fc-photo.has-photo > svg { display: none; }
+
+/* ---- Datos superpuestos ---- */
+.fcard .fc-left {
+  position: absolute; left: 0.62em; top: 1.05em; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 0.12em;
+  color: #fff; text-shadow: 0 0.05em 0.25em rgba(0, 0, 0, 0.75);
+}
+.fcard .fc-rating { font-family: var(--display); font-size: 3em; line-height: 0.82; }
+.fcard .fc-pos { font-family: var(--display); font-size: 1.2em; line-height: 1; letter-spacing: 0.05em; margin-bottom: 0.15em; }
+.fcard .fc-chip {
+  font-size: 0.58em; width: 2.3em; height: 2.5em; display: grid; place-items: center; background: var(--chip); color: var(--chip-ink);
+  clip-path: polygon(50% 0, 100% 22%, 100% 78%, 50% 100%, 0 78%, 0 22%); font-weight: 800; letter-spacing: 0.02em; text-shadow: none;
+}
+.fcard .fc-chip svg { width: 62%; height: 62%; }
+.fcard .fc-cat {
+  position: absolute; right: 0.6em; top: 1.15em; z-index: 3; font-family: var(--display); font-size: 0.8em; letter-spacing: 0.08em;
+  padding: 0.15em 0.5em; border-radius: 0.35em; background: var(--chip); color: var(--chip-ink);
+}
+.fcard .fc-name {
+  position: absolute; left: 5%; right: 5%; top: 62%; z-index: 3; text-align: center; font-family: var(--display);
+  font-size: calc(1.55em * var(--ns, 1)); line-height: 1; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 0.05em 0.2em var(--name-shadow, rgba(0, 0, 0, 0.45));
+}
+.fcard .fc-stats {
+  position: absolute; left: 11%; right: 11%; top: 72.5%; z-index: 3; display: grid; grid-template-columns: repeat(3, 1fr); text-align: center;
+  border-top: 0.06em solid color-mix(in srgb, var(--ink) 30%, transparent); padding-top: 0.18em;
+}
+.fcard .fc-stats div { display: flex; flex-direction: column; line-height: 1; }
+.fcard .fc-stats span { font-size: 0.52em; font-weight: 800; letter-spacing: 0.1em; opacity: 0.85; }
+.fcard .fc-stats b { font-family: var(--display); font-size: 1.42em; font-weight: 400; }
+.fcard .fc-foot {
+  position: absolute; left: 0; right: 0; top: 88.6%; z-index: 3; display: flex; justify-content: center; align-items: center; gap: 0.5em;
+  font-size: 0.44em; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85;
+}
+.fcard .fc-foot i { width: 0.5em; height: 0.5em; background: currentColor; transform: rotate(45deg); }
+.fcard .f-count {
+  position: absolute; right: 2%; bottom: 14%; z-index: 10; background: #0b1424; color: #fff; font-weight: 800; font-size: 0.68em;
+  padding: 0.15em 0.5em; border-radius: 1em; border: 0.08em solid rgba(255, 255, 255, 0.4);
+}
+.fcard .f-sel { position: absolute; left: 50%; transform: translateX(-50%); bottom: -0.55em; z-index: 10; box-shadow: 0 0.1em 0.3em rgba(0,0,0,0.5); background: var(--accent); color: #031a0b; font-weight: 800; font-size: 0.58em; padding: 0.15em 0.55em; border-radius: 1em; }
+
+/* ---- Brillo que recorre la carta ---- */
+.fcard .fc-inner::after {
+  content: ''; position: absolute; inset: -50%; z-index: 6; pointer-events: none;
+  background: linear-gradient(115deg, transparent 42%, rgba(255, 255, 255, 0.3) 50%, transparent 58%); transform: translateX(-60%);
+}
+.fcard.shine .fc-inner::after, .fcard.t-elite .fc-inner::after, .fcard.t-toty .fc-inner::after, .fcard.t-futties .fc-inner::after { animation: shine 3.2s ease-in-out infinite; }
+
+/* ---- Categorías ---- */
+.fcard.t-bronce {
+  --frame: linear-gradient(160deg, #f6d0aa, #8a5428 45%, #e8b07d 70%, #6b3d16);
+  --bg: linear-gradient(172deg, #d8986a 0%, #a8653a 52%, #6b3a18 100%);
+  --ink: #fff3e6; --tone: rgba(205, 125, 60, 0.45); --chip: rgba(60, 28, 6, 0.6);
+}
+.fcard.t-plata {
+  --frame: linear-gradient(160deg, #ffffff, #8b96a3 45%, #f1f4f7 70%, #707b88);
+  --bg: linear-gradient(172deg, #f7f9fb 0%, #c9d2db 52%, #97a3b0 100%);
+  --ink: #142030; --name-shadow: rgba(255, 255, 255, 0.6); --tone: rgba(190, 210, 230, 0.4); --chip: rgba(20, 32, 48, 0.75);
+}
+.fcard.t-oro {
+  --frame: linear-gradient(160deg, #fff6c4, #b98a00 45%, #ffe68a 70%, #9a7200);
+  --bg: linear-gradient(172deg, #fff1ad 0%, #f0c43c 50%, #b88500 100%);
+  --ink: #2b1f00; --name-shadow: rgba(255, 240, 180, 0.6); --tone: rgba(255, 196, 0, 0.35); --chip: rgba(43, 31, 0, 0.75); --chip-ink: #ffe27a;
+}
+.fcard.t-elite {
+  --frame: linear-gradient(160deg, #ffe9a0, #6e5000 40%, #ffd86b 65%, #5a4100); --glow: rgba(255, 196, 0, 0.45);
+  --bg: radial-gradient(90% 50% at 70% 8%, rgba(255, 210, 90, 0.4), transparent 60%), linear-gradient(172deg, #2a2312 0%, #120f07 55%, #000 100%);
+  --ink: #ffd86b; --tone: rgba(255, 190, 40, 0.35); --chip: linear-gradient(180deg, #ffe27a, #c99700); --chip-ink: #1a1200;
+}
+.fcard.t-toty {
+  --glow: rgba(47, 123, 255, 0.7);
+  --bg: radial-gradient(80% 45% at 50% 6%, rgba(140, 200, 255, 0.55), transparent 60%),
+        repeating-conic-gradient(from 0deg at 50% 30%, rgba(255, 255, 255, 0.07) 0 7deg, transparent 7deg 15deg),
+        linear-gradient(168deg, #2d66ff 0%, #0c2a9e 50%, #040a35 100%);
+  --ink: #fff; --tone: rgba(40, 110, 255, 0.5); --chip: linear-gradient(180deg, #ffe27a, #d9a400); --chip-ink: #0b1a5c;
+}
+.fcard.t-futties {
+  --glow: rgba(255, 63, 164, 0.7);
+  --bg: radial-gradient(70% 40% at 25% 10%, rgba(255, 200, 240, 0.6), transparent 60%),
+        radial-gradient(60% 40% at 85% 55%, rgba(170, 90, 255, 0.55), transparent 60%),
+        linear-gradient(162deg, #ff5cb8 0%, #b0127e 50%, #45095f 100%);
+  --ink: #fff; --tone: rgba(255, 70, 180, 0.5); --chip: #fff; --chip-ink: #c2127f;
+}
+
+/* ---- Especiales: borde giratorio, brillo pulsante y fondo propio ---- */
+.fcard.t-toty .fc-body { background: conic-gradient(from var(--ang), #ffd54a, #2f7bff, #bfe3ff, #ffd54a, #2f7bff, #ffd54a); animation: ringSpin 3s linear infinite; }
+.fcard.t-futties .fc-body { background: conic-gradient(from var(--ang), #ff3fa4, #fff, #b46bff, #ff3fa4, #ffd1ec, #ff3fa4); animation: ringSpin 2.6s linear infinite; }
+.fcard.t-toty { animation: glowToty 2.4s ease-in-out infinite; }
+.fcard.t-futties { animation: glowFutties 2s ease-in-out infinite; }
+.fcard.t-toty .fc-bgart {
+  background: radial-gradient(120% 55% at 50% 0%, rgba(255, 255, 255, 0.3), transparent 62%),
+              linear-gradient(125deg, transparent 30%, rgba(160, 210, 255, 0.35) 31%, transparent 40%),
+              linear-gradient(60deg, transparent 55%, rgba(255, 215, 90, 0.3) 56%, transparent 63%);
+}
+.fcard.t-futties .fc-bgart {
+  background: radial-gradient(circle at 15% 70%, rgba(255, 255, 255, 0.35) 0 0.5em, transparent 0.6em),
+              radial-gradient(circle at 85% 20%, rgba(255, 255, 255, 0.3) 0 0.8em, transparent 0.9em),
+              radial-gradient(circle at 70% 85%, rgba(255, 210, 240, 0.35) 0 0.4em, transparent 0.5em);
+}
+
+/* ---- Capas de efectos ---- */
+.fcard .fx { position: absolute; inset: 0; pointer-events: none; }
+.fcard .fx-aura { z-index: 0; opacity: 0.85; mix-blend-mode: screen; background-size: 300% 300%; animation: aura 6s ease-in-out infinite; }
+.fcard .fx-holo {
+  z-index: 4; mix-blend-mode: overlay; opacity: 0.38;
+  background: radial-gradient(circle at var(--mx, 30%) var(--my, 20%), rgba(255, 255, 255, 0.9), transparent 38%),
+              linear-gradient(115deg, transparent 20%, rgba(255, 0, 170, 0.35), rgba(0, 200, 255, 0.35), rgba(255, 240, 0, 0.35), transparent 80%);
+  background-size: 100% 100%, 250% 250%; animation: holo 4s linear infinite;
+}
+.fcard .fx-parts { z-index: 4; overflow: hidden; }
+.fcard .fx-parts i { position: absolute; left: var(--x); bottom: -1em; width: var(--s); height: var(--s); opacity: 0; animation: floatUp var(--t) ease-in var(--d) infinite; }
+.fcard.t-toty .fx-aura { background-image: linear-gradient(120deg, rgba(20, 80, 255, 0), rgba(60, 140, 255, 0.55), rgba(255, 215, 90, 0.35), rgba(20, 80, 255, 0)); }
+.fcard.t-toty .fx-parts i {
+  background: #fff6c2; box-shadow: 0 0 0.5em #ffd54a, 0 0 1em #2f7bff;
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+.fcard.t-futties .fx-aura { background-image: linear-gradient(120deg, rgba(255, 60, 170, 0), rgba(255, 120, 210, 0.6), rgba(180, 100, 255, 0.55), rgba(255, 60, 170, 0)); }
+.fcard.t-futties .fx-parts i { background: #ffd1ec; box-shadow: 0 0 0.6em #ff3fa4; clip-path: path('M5 9 L1 5 A2.3 2.3 0 0 1 5 1.8 A2.3 2.3 0 0 1 9 5 Z'); width: 10px; height: 10px; }
+.fcard.t-futties .fx-parts i:nth-child(odd) { clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); background: #fff; width: var(--s); height: var(--s); }
+.fcard .sparkles {
+  position: absolute; inset: 0; pointer-events: none; z-index: 4;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0 1px, transparent 2px), radial-gradient(circle, rgba(255, 255, 255, 0.7) 0 1px, transparent 2px);
+  background-size: 23% 19%, 31% 27%; background-position: 10% 20%, 60% 70%; animation: twinkle 2.4s ease-in-out infinite alternate;
+}
+
+.fcard.clickable { cursor: pointer; }
+.fcard.clickable:hover { transform: translateY(-4px) scale(1.03); }
+.fcard.missing { filter: grayscale(1) brightness(0.35) !important; animation: none !important; }
+.pick-option.chosen .fcard { outline: none; filter: drop-shadow(0 0 0.5em var(--accent)) drop-shadow(0 0 0.2em var(--accent)); }
+
+@keyframes ringSpin { to { --ang: 360deg; } }
+@keyframes aura { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes holo { to { background-position: 0 0, 250% 250%; } }
+@keyframes floatUp {
+  0% { transform: translateY(0) scale(0.6) rotate(0); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(-14em) scale(1.1) rotate(180deg); opacity: 0; }
+}
+@keyframes glowToty {
+  0%, 100% { filter: drop-shadow(0 0.35em 0.45em rgba(0, 0, 0, 0.55)) drop-shadow(0 0 0.6em rgba(47, 123, 255, 0.6)); }
+  50% { filter: drop-shadow(0 0.35em 0.45em rgba(0, 0, 0, 0.55)) drop-shadow(0 0 1.4em rgba(47, 123, 255, 1)) drop-shadow(0 0 0.4em rgba(255, 213, 74, 0.7)); }
+}
+@keyframes glowFutties {
+  0%, 100% { filter: drop-shadow(0 0.35em 0.45em rgba(0, 0, 0, 0.55)) drop-shadow(0 0 0.6em rgba(255, 63, 164, 0.6)); }
+  50% { filter: drop-shadow(0 0.35em 0.45em rgba(0, 0, 0, 0.55)) drop-shadow(0 0 1.4em rgba(255, 63, 164, 1)) drop-shadow(0 0 0.4em rgba(180, 107, 255, 0.8)); }
+}
