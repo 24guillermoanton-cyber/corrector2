@@ -3,6 +3,7 @@ import { $, $$, esc, crestSVG, cardHTML, statBars, toast, modal, confirmModal, s
 import { sfx, isMuted, setMuted } from './sound.js';
 import { openPackAnimation } from './pack.js';
 import { renderSala } from './match.js';
+import { showGift } from './gift.js';
 
 const app = $('#app');
 
@@ -92,10 +93,8 @@ function connectSocket() {
   s.on('kick:result', (r) => bus.emit('kick', r));
   s.on('match:end', (r) => { bus.emit('end', r); refreshMe(); });
   s.on('gift', (g) => {
-    const parts = [g.coins ? `${g.coins} 🪙` : '', g.card ? `la carta ${g.card.name}` : ''].filter(Boolean).join(' y ');
-    toast(`🎁 ${g.from} te ha regalado ${parts}`);
-    sfx.coins();
     refreshMe();
+    showGift(g, { getCard: (id) => state.cards.get(id), onPicks: () => { location.hash = '#/picks'; } });
   });
 }
 function setRoom(st) {
@@ -464,7 +463,7 @@ routes.picks = () => {
       <div class="panel" style="margin-bottom:16px"><h3>Progreso de la racha</h3>
         <p style="margin:0 0 8px">Racha actual: <b>${streak}</b> victoria${streak === 1 ? '' : 's'} seguida${streak === 1 ? '' : 's'}</p>${streakHTML(streak)}</div>
       ${pending.map((p) => `<div class="panel pick-block" data-pick="${p.id}">
-        <h2>🎁 Pick por racha de ${p.streakAt} victorias</h2><p class="muted">Elige una carta para añadirla a tu colección. Las opciones son fijas: recargar no las cambia.</p>
+        <h2>🎁 ${p.streakAt ? `Pick por racha de ${p.streakAt} victorias` : 'Player pick especial'}</h2><p class="muted">Elige una carta para añadirla a tu colección. Las opciones son fijas: recargar no las cambia.</p>
         <div class="pick-options">${p.options.map((id, i) => `<div class="pick-option flip-in" style="animation-delay:${i * 0.15}s" data-card="${id}">
           ${cardHTML(state.cards.get(id), { extraClass: 'shine' })}<button class="btn btn-primary btn-sm">Elegir</button></div>`).join('')}</div></div>`).join('')
         || '<div class="panel center"><p>No tienes player picks pendientes.</p><a class="btn btn-primary" href="#/sala">¡A ganar partidos!</a></div>'}
@@ -530,11 +529,12 @@ function giftFields() {
     .sort((a, b) => TIER_ORDER.indexOf(b.tier) - TIER_ORDER.indexOf(a.tier) || b.rating - a.rating || a.name.localeCompare(b.name));
   return `<input name="coins" type="number" min="0" step="1" placeholder="Monedas" style="width:140px">
     <select name="cardId" style="width:auto;max-width:320px"><option value="">— Sin carta —</option>
-    ${cards.map((c) => `<option value="${esc(c.id)}">${esc(TIER_NAMES[c.tier])} · ${c.rating} · ${esc(c.name)} (${c.type === 'portero' ? 'POR' : esc(c.position)})</option>`).join('')}</select>`;
+    ${cards.map((c) => `<option value="${esc(c.id)}">${esc(TIER_NAMES[c.tier])} · ${c.rating} · ${esc(c.name)} (${c.type === 'portero' ? 'POR' : esc(c.position)})</option>`).join('')}</select>
+    <label class="row" style="gap:6px;margin:0;white-space:nowrap"><input type="checkbox" name="pick" style="width:auto"> Player pick</label>`;
 }
 function giftBody(form) {
   const fd = new FormData(form);
-  return { coins: fd.get('coins') ? Number(fd.get('coins')) : 0, cardId: fd.get('cardId') || null };
+  return { coins: fd.get('coins') ? Number(fd.get('coins')) : 0, cardId: fd.get('cardId') || null, pick: fd.get('pick') === 'on' };
 }
 
 routes.admin = () => {
@@ -544,6 +544,9 @@ routes.admin = () => {
       <form class="row" id="coins-form"><select name="mode" style="width:auto"><option value="add">Añadir / restar</option><option value="set">Fijar saldo</option></select>
       <input name="amount" type="number" step="1" required placeholder="Cantidad" style="width:160px"><button class="btn btn-gold">Aplicar</button>
       <span class="muted">Saldo actual: <b id="adm-coins">${state.me.coins}</b></span></form></div>
+    <div class="panel"><h3>🎴 Player picks</h3>
+      <div class="row"><button class="btn btn-gold" id="adm-pick">Abrir un player pick</button>
+      <span class="muted">Se crea un pick nuevo para ti y vas directo a elegir la carta.</span></div></div>
     <div class="panel"><h3>🎁 Regalar a todos los conectados</h3>
       <form class="row" id="gift-all-form">${giftFields()}<button class="btn btn-gold">Regalar a todos</button></form></div>
     <div class="panel table-wrap"><h3>Cuentas registradas</h3><div id="adm-users"><div class="spinner"></div></div></div>
@@ -607,6 +610,9 @@ routes.admin = () => {
       const r = await api('POST', '/api/admin/coins', { mode: fd.get('mode'), amount: Number(fd.get('amount')) });
       setCoins(r.coins); $('#adm-coins').textContent = r.coins; sfx.coins(); toast('Saldo actualizado'); load();
     } catch (err) { toast(err.message, 'err'); }
+  };
+  $('#adm-pick').onclick = async () => {
+    try { await api('POST', '/api/admin/picks'); sfx.sparkle(); location.hash = '#/picks'; } catch (err) { toast(err.message, 'err'); }
   };
   $('#gift-all-form').onsubmit = async (e) => {
     e.preventDefault();

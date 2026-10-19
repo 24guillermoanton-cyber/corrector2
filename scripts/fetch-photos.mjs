@@ -1,6 +1,7 @@
 // Busca una foto con licencia libre (Wikimedia Commons) para cada carta y guarda
 // la URL, el autor y la licencia en public/data/photos.json.
-// Uso: node scripts/fetch-photos.mjs
+// Uso: node scripts/fetch-photos.mjs            (todas)
+//      node scripts/fetch-photos.mjs --missing  (solo las cartas que aún no tienen foto, p. ej. iconos nuevos)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,19 +41,21 @@ async function findFile(name) {
 }
 
 const names = [...new Set(CARDS.map((c) => c.name))];
+const prev = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : {};
+const missingOnly = process.argv.includes('--missing');
 const files = {};
 // --refresh: reutiliza los archivos ya elegidos y solo vuelve a pedir la miniatura (p. ej. a mayor resolución)
 if (process.argv.includes('--refresh') && fs.existsSync(OUT)) {
   for (const [name, p] of Object.entries(JSON.parse(fs.readFileSync(OUT, 'utf8')))) files[name] = decodeURIComponent(p.file.split('File:')[1]);
 }
-for (const name of process.argv.includes('--refresh') ? [] : names) {
+for (const name of process.argv.includes('--refresh') ? [] : missingOnly ? names.filter((n) => !prev[n]) : names) {
   const f = await findFile(name);
   if (f) files[name] = f;
   console.log(`${f ? '·' : '✖'} ${name}`);
 }
 
 // 2) Commons: autor, licencia y miniatura, en lotes
-const out = {};
+const out = missingOnly ? { ...prev } : {};
 const entries = Object.entries(files);
 for (let i = 0; i < entries.length; i += 40) {
   const batch = entries.slice(i, i + 40);

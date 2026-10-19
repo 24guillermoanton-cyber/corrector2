@@ -70,7 +70,7 @@ test('compras simultáneas no permiten gastar más monedas de las que hay', asyn
 });
 
 test('probabilidades de sobres suman 100 y los caros son mejores', () => {
-  const value = { bronce: 1, plata: 2, oro: 3, elite: 4, toty: 5, futties: 5 };
+  const value = { bronce: 1, plata: 2, oro: 3, elite: 4, toty: 5, futties: 5, icono: 6 };
   let prev = 0;
   for (const p of PACKS) {
     const sum = Object.values(p.odds).reduce((a, b) => a + b, 0);
@@ -261,6 +261,18 @@ test('administración: código validado en servidor, permisos y acciones', async
   assert.equal((await admin.post(`/api/admin/users/${user.user.id}/gift`, { cardId: 'no-existe' })).status, 400);
   assert.equal((await admin.post(`/api/admin/users/${user.user.id}/gift`, {})).status, 400);
   assert.equal((await user.post(`/api/admin/users/${user.user.id}/gift`, { coins: 100 })).status, 403);
+  // Regalar un player pick: aparece pendiente y el aviso lo indica
+  const gotPick = new Promise((r) => su.once('gift', r));
+  assert.equal((await admin.post(`/api/admin/users/${user.user.id}/gift`, { pick: true })).status, 200);
+  assert.equal((await gotPick).pick, true);
+  const upicks = (await user.get('/api/picks')).data.picks;
+  assert.equal(upicks.filter((p) => !p.claimedCard).length, 1);
+  assert.equal(upicks[0].options.length, 3);
+  // El admin puede abrir picks para sí mismo; un usuario normal no
+  assert.equal((await admin.post('/api/admin/picks', {})).status, 200);
+  assert.equal((await admin.get('/api/picks')).data.picks.filter((p) => !p.claimedCard).length, 1);
+  assert.equal((await user.post('/api/admin/picks', {})).status, 403);
+
   // A todos los conectados (el usuario está conectado)
   const all = await admin.post('/api/admin/gift-online', { coins: 50 });
   assert.equal(all.status, 200);
@@ -326,4 +338,23 @@ test('el código de administrador no aparece en archivos públicos ni del reposi
   const example = fs.readFileSync(path.join(root, '.env.example'), 'utf8');
   assert.match(example, /ADMIN_INVITE_CODE=/);
   assert.match(fs.readFileSync(path.join(root, '.gitignore'), 'utf8'), /^\.env$/m);
+});
+
+test('sobre Icono: cuesta 500.000 y trae un icono lanzador y un icono portero', async () => {
+  const pack = PACKS.find((p) => p.id === 'icono');
+  assert.equal(pack.price, 500000);
+  const a = await newUser(srv, 'icon');
+  assert.equal((await a.post('/api/shop/open', { packId: 'icono' })).status, 402);
+  await srv.db.query('UPDATE users SET coins=$2 WHERE id=$1', [a.user.id, 500000]);
+  const r = await a.post('/api/shop/open', { packId: 'icono' });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.data.cards.map((c) => c.tier), ['icono', 'icono']);
+  assert.deepEqual(r.data.cards.map((c) => c.type).sort(), ['jugador', 'portero']);
+  assert.equal(r.data.coins, 0);
+});
+
+test('Lamine Yamal FUTTIES tiene 99 de media', async () => {
+  const { CARD_BY_ID } = await import('../server/cards.js');
+  const c = CARD_BY_ID.get('futties-j-lamine-yamal');
+  assert.equal(c.rating, 99);
 });

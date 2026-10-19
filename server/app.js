@@ -261,19 +261,27 @@ export function createApp({ db, rng, timing } = {}) {
   function parseGift(body) {
     const coins = body?.coins == null || body.coins === '' ? 0 : Number(body.coins);
     const cardId = body?.cardId ? String(body.cardId) : null;
+    const pick = body?.pick === true;
     if (!Number.isInteger(coins) || coins < 0 || coins > ECONOMY.adminMaxCoinsAdjust) throw new game.GameError('Cantidad de monedas no válida');
     if (cardId && !CARD_BY_ID.has(cardId)) throw new game.GameError('Carta no válida');
-    if (!coins && !cardId) throw new game.GameError('Elige monedas o una carta para regalar');
-    return { coins, card: cardId ? CARD_BY_ID.get(cardId) : null };
+    if (!coins && !cardId && !pick) throw new game.GameError('Elige monedas, una carta o un player pick para regalar');
+    return { coins, card: cardId ? CARD_BY_ID.get(cardId) : null, pick };
   }
-  async function giveGift(admin, user, { coins, card }) {
+  async function giveGift(admin, user, { coins, card, pick }) {
     await db.tx(async ({ query: q }) => {
       if (coins) await q('UPDATE users SET coins = coins + $2 WHERE id=$1', [user.id, coins]);
       if (card) await q('INSERT INTO user_cards (user_id, card_id, source) VALUES ($1,$2,$3)', [user.id, card.id, `admin:${admin.id}`]);
     });
-    await adminLog(admin, 'regalo', user.username, { coins: coins || undefined, card: card?.id });
-    io.to(`u:${user.id}`).emit('gift', { from: admin.username, coins, card: card && { id: card.id, name: card.name } });
+    const pickId = pick ? await game.createPick(db, user.id) : null;
+    await adminLog(admin, 'regalo', user.username, { coins: coins || undefined, card: card?.id, pick: pickId || undefined });
+    io.to(`u:${user.id}`).emit('gift', { from: admin.username, coins, card: card && { id: card.id, name: card.name }, pick: !!pickId });
   }
+  // El administrador puede abrir player picks para sí mismo cuando quiera.
+  app.post('/api/admin/picks', requireAdmin(async (req, res) => {
+    const id = await game.createPick(db, req.user.id);
+    await adminLog(req.user, 'abrir player pick', req.user.username, { pick: id });
+    res.json({ ok: true, pickId: id });
+  }));
   app.post('/api/admin/users/:id/gift', requireAdmin(async (req, res) => {
     const gift = parseGift(req.body);
     const [u] = await db.query('SELECT id, username, banned FROM users WHERE id=$1', [Number(req.params.id) || 0]);

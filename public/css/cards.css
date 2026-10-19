@@ -86,7 +86,7 @@
   content: ''; position: absolute; inset: -50%; z-index: 6; pointer-events: none;
   background: linear-gradient(115deg, transparent 42%, rgba(255, 255, 255, 0.3) 50%, transparent 58%); transform: translateX(-60%);
 }
-.fcard.shine .fc-inner::after, .fcard.t-elite .fc-inner::after, .fcard.t-toty .fc-inner::after, .fcard.t-futties .fc-inner::after { animation: shine 3.2s ease-in-out infinite; }
+.fcard.shine .fc-inner::after, .fcard.t-elite .fc-inner::after, .fcard.t-toty .fc-inner::after, .fcard.t-futties .fc-inner::after, .fcard.t-icono .fc-inner::after { animation: shine 3.2s ease-in-out infinite; }
 
 /* ---- Categorías ---- */
 .fcard.t-bronce {
@@ -123,12 +123,21 @@
         linear-gradient(162deg, #ff5cb8 0%, #b0127e 50%, #45095f 100%);
   --ink: #fff; --tone: rgba(255, 70, 180, 0.5); --chip: #fff; --chip-ink: #c2127f;
 }
+.fcard.t-icono {
+  --glow: rgba(245, 225, 164, 0.8);
+  --bg: radial-gradient(80% 45% at 50% 6%, rgba(255, 255, 255, 0.9), transparent 60%),
+        repeating-linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0 2px, transparent 2px 10px),
+        linear-gradient(168deg, #fffaf0 0%, #f3e3b5 50%, #cfae62 100%);
+  --ink: #3a2a00; --name-shadow: rgba(255, 255, 255, 0.8); --tone: rgba(212, 175, 55, 0.35); --chip: linear-gradient(180deg, #3a2a00, #6b4e00); --chip-ink: #ffe9a8;
+}
 
 /* ---- Especiales: borde giratorio, brillo pulsante y fondo propio ---- */
 .fcard.t-toty .fc-body { background: conic-gradient(from var(--ang), #ffd54a, #2f7bff, #bfe3ff, #ffd54a, #2f7bff, #ffd54a); animation: ringSpin 3s linear infinite; }
 .fcard.t-futties .fc-body { background: conic-gradient(from var(--ang), #ff3fa4, #fff, #b46bff, #ff3fa4, #ffd1ec, #ff3fa4); animation: ringSpin 2.6s linear infinite; }
 .fcard.t-toty { animation: glowToty 2.4s ease-in-out infinite; }
 .fcard.t-futties { animation: glowFutties 2s ease-in-out infinite; }
+.fcard.t-icono .fc-body { background: conic-gradient(from var(--ang), #fff8e1, #d4af37, #fff, #b8892a, #f5e1a4, #fff8e1); animation: ringSpin 3.4s linear infinite; }
+.fcard.t-icono { animation: glowIcono 2.2s ease-in-out infinite; }
 .fcard.t-toty .fc-bgart {
   background: radial-gradient(120% 55% at 50% 0%, rgba(255, 255, 255, 0.3), transparent 62%),
               linear-gradient(125deg, transparent 30%, rgba(160, 210, 255, 0.35) 31%, transparent 40%),
@@ -159,6 +168,11 @@
 .fcard.t-futties .fx-aura { background-image: linear-gradient(120deg, rgba(255, 60, 170, 0), rgba(255, 120, 210, 0.6), rgba(180, 100, 255, 0.55), rgba(255, 60, 170, 0)); }
 .fcard.t-futties .fx-parts i { background: #ffd1ec; box-shadow: 0 0 0.6em #ff3fa4; clip-path: path('M5 9 L1 5 A2.3 2.3 0 0 1 5 1.8 A2.3 2.3 0 0 1 9 5 Z'); width: 10px; height: 10px; }
 .fcard.t-futties .fx-parts i:nth-child(odd) { clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); background: #fff; width: var(--s); height: var(--s); }
+.fcard.t-icono .fx-aura { background-image: linear-gradient(120deg, rgba(255, 248, 225, 0), rgba(255, 236, 170, 0.7), rgba(212, 175, 55, 0.5), rgba(255, 248, 225, 0)); }
+.fcard.t-icono .fx-parts i {
+  background: #fff; box-shadow: 0 0 0.5em #fff, 0 0 1em #d4af37;
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
 .fcard .sparkles {
   position: absolute; inset: 0; pointer-events: none; z-index: 4;
   background-image: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0 1px, transparent 2px), radial-gradient(circle, rgba(255, 255, 255, 0.7) 0 1px, transparent 2px);
@@ -181,6 +195,10 @@
 @keyframes glowToty {
   0%, 100% { filter: drop-shadow(0 0.35em 0.45em rgba(0, 0, 0, 0.55)) drop-shadow(0 0 0.6em rgba(47, 123, 255, 0.6)); }
   50% { filter: drop-shadow(0 0.35em 0.45em rgba(0, 0, 0, 0.55)) drop-shadow(0 0 1.4em rgba(47, 123, 255, 1)) drop-shadow(0 0 0.4em rgba(255, 213, 74, 0.7)); }
+}
+@keyframes glowIcono {
+  0%, 100% { filter: drop-shadow(0 0.35em 0.45em rgba(0, 0, 0, 0.55)) drop-shadow(0 0 0.6em rgba(245, 225, 164, 0.6)); }
+  50% { filter: drop-shadow(0 0.35em 0.45em rgba(0, 0, 0, 0.55)) drop-shadow(0 0 1.5em rgba(255, 240, 190, 1)) drop-shadow(0 0 0.4em rgba(212, 175, 55, 0.9)); }
 }
 @keyframes glowFutties {
   0%, 100% { filter: drop-shadow(0 0.35em 0.45em rgba(0, 0, 0, 0.55)) drop-shadow(0 0 0.6em rgba(255, 63, 164, 0.6)); }

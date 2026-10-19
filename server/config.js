@@ -9,7 +9,7 @@ export const ECONOMY = {
   lossReward: 50,          // monedas por perderla (si no abandonas)
   abandonReward: 0,        // monedas para quien abandona o se desconecta
   // Venta rápida de cartas repetidas (solo copias sobrantes)
-  quickSell: { bronce: 10, plata: 25, oro: 60, elite: 120, toty: 300, futties: 300 },
+  quickSell: { bronce: 10, plata: 25, oro: 60, elite: 120, toty: 300, futties: 300, icono: 5000 },
   adminMaxCoinsAdjust: 1_000_000,
 };
 
@@ -21,6 +21,7 @@ export const TIERS = {
   elite:   { name: 'Élite',   special: false },
   toty:    { name: 'TOTY',    special: true },
   futties: { name: 'FUTTIES', special: true },
+  icono:   { name: 'Icono',   special: true },
 };
 
 // Sobres: cada uno da exactamente 1 futbolista de campo y 1 portero.
@@ -34,6 +35,8 @@ export const PACKS = [
     odds: { bronce: 0, plata: 30, oro: 55, elite: 12, toty: 1.5, futties: 1.5 } },
   { id: 'elite', name: 'Sobre Élite', price: 10000,
     odds: { bronce: 0, plata: 0, oro: 50, elite: 38, toty: 6, futties: 6 } },
+  { id: 'icono', name: 'Sobre Icono', price: 500000,
+    odds: { icono: 100 } },
 ];
 
 // Player pick: cada 3 victorias seguidas. Probabilidades de cada una de las 3 opciones.
@@ -74,7 +77,7 @@ export const SHOT = {
   },
   // Segunda estirada (reincorporación)
   second: {
-    tiers: ['oro', 'elite', 'toty', 'futties'], // solo porteros dorados o superiores (bronce y plata no)
+    tiers: ['oro', 'elite', 'toty', 'futties', 'icono'], // solo porteros dorados o superiores (bronce y plata no)
     minRecovery: 70,      // reincorporación mínima del portero
     maxPower: 80,         // potencia máxima del disparo concreto
     baseMs: 700,          // ventana = baseMs + (reincorporación - potencia) * perPointMs

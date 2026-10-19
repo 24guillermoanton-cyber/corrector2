@@ -122,6 +122,36 @@ const KEEPERS = [
 ];
 
 // Cartas especiales: [nombre base, categoría, mejora de estadísticas]
+// Iconos: leyendas retiradas. Mismo formato que arriba; su categoría es siempre 'icono'.
+const ICONS = [
+  ['Pelé', 'DC', 'Brasil', 95, 'T'],
+  ['Diego Maradona', 'MCO', 'Argentina', 95, 'T'],
+  ['Zinedine Zidane', 'MCO', 'Francia', 94, 'T'],
+  ['Ronaldo Nazário', 'DC', 'Brasil', 94, 'F'],
+  ['Johan Cruyff', 'DC', 'Países Bajos', 93, 'T'],
+  ['Andrea Pirlo', 'MC', 'Italia', 93, 'P'],
+  ['Francesco Totti', 'SD', 'Italia', 92, 'P'],
+  ['Ronaldinho', 'MCO', 'Brasil', 92, 'T'],
+  ['Thierry Henry', 'DC', 'Francia', 92, 'B'],
+  ['Eusébio', 'DC', 'Portugal', 92, 'F'],
+  ['Marco van Basten', 'DC', 'Países Bajos', 92, 'B'],
+  ['Roberto Baggio', 'SD', 'Italia', 91, 'P'],
+  ['Zlatan Ibrahimović', 'DC', 'Suecia', 91, 'F'],
+  ['Alan Shearer', 'DC', 'Inglaterra', 91, 'F'],
+  ['Wayne Rooney', 'DC', 'Inglaterra', 90, 'F'],
+  ['Raúl González', 'DC', 'España', 90, 'B'],
+  ['Andrés Iniesta', 'MC', 'España', 90, 'T'],
+  ['Xavi Hernández', 'MC', 'España', 89, 'P'],
+  ['Fernando Torres', 'DC', 'España', 89, 'F'],
+  ['Lev Yashin', 'POR', 'Unión Soviética', 95, 'S'],
+  ['Gianluigi Buffon', 'POR', 'Italia', 94, 'S'],
+  ['Iker Casillas', 'POR', 'España', 93, 'A'],
+  ['Oliver Kahn', 'POR', 'Alemania', 93, 'R'],
+  ['Peter Schmeichel', 'POR', 'Dinamarca', 92, 'A'],
+  ['Petr Čech', 'POR', 'Chequia', 91, 'S'],
+];
+
+// [nombre, categoría, mejora de todas las estadísticas | 'max' (todas a 99)]
 const SPECIALS = [
   ['Harry Kane', 'toty', 5],
   ['Kylian Mbappé', 'toty', 6],
@@ -131,7 +161,7 @@ const SPECIALS = [
   ['Emiliano Martínez', 'toty', 5],
   ['Mike Maignan', 'toty', 6],
   ['Cole Palmer', 'futties', 6],
-  ['Lamine Yamal', 'futties', 12],
+  ['Lamine Yamal', 'futties', 'max'],
   ['Bruno Fernandes', 'futties', 6],
   ['Antoine Griezmann', 'futties', 8],
   ['Diogo Costa', 'futties', 6],
@@ -197,16 +227,21 @@ const base = [
   ...KEEPERS.map((r) => buildCard(r, 'portero')),
 ];
 
+const icons = ICONS.map((r) => {
+  const c = buildCard(r, r[1] === 'POR' ? 'portero' : 'jugador');
+  return { ...c, id: `icono-${c.id}`, tier: 'icono', special: true };
+});
+
 const specials = SPECIALS.map(([name, tier, boost]) => {
   const b = base.find((c) => c.name === name);
   if (!b) throw new Error(`Carta base no encontrada: ${name}`);
   const stats = {};
-  for (const [k, v] of Object.entries(b.stats)) stats[k] = clamp(v + boost, 30, 99);
+  for (const [k, v] of Object.entries(b.stats)) stats[k] = boost === 'max' ? 99 : clamp(v + boost, 30, 99);
   const rating = b.type === 'jugador' ? playerOverall(stats) : keeperOverall(stats);
   return { ...b, id: `${tier}-${b.id}`, tier, stats, rating, special: true };
 });
 
-export const CARDS = [...base, ...specials];
+export const CARDS = [...base, ...specials, ...icons];
 export const CARD_BY_ID = new Map(CARDS.map((c) => [c.id, c]));
 
 export function cardsOf(type, tier) {
@@ -214,7 +249,7 @@ export function cardsOf(type, tier) {
 }
 
 // Comprobación de integridad: cada categoría debe tener jugadores y porteros.
-for (const t of ['bronce', 'plata', 'oro', 'elite', 'toty', 'futties']) {
+for (const t of ['bronce', 'plata', 'oro', 'elite', 'toty', 'futties', 'icono']) {
   for (const type of ['jugador', 'portero']) {
     if (!cardsOf(type, t).length) throw new Error(`Falta ${type} en categoría ${t}`);
   }

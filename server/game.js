@@ -182,6 +182,13 @@ export async function cancelMatchRecord(db, matchId, reason) {
 }
 
 // ---- Player picks ----
+// Pick extra (lo crea un administrador para sí mismo o como regalo). streak_at = 0.
+export async function createPick(db, userId) {
+  const [pk] = await db.query('INSERT INTO player_picks (user_id, options, streak_at) VALUES ($1,$2,0) RETURNING id',
+    [userId, JSON.stringify(generatePickOptions())]);
+  return pk.id;
+}
+
 export async function listPicks(db, userId) {
   const rows = await db.query(`SELECT * FROM player_picks WHERE user_id=$1 ORDER BY id DESC LIMIT 30`, [userId]);
   return rows.map((r) => ({

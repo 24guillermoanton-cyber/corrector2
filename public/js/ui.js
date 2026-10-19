@@ -5,8 +5,8 @@ export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export const TIER_NAMES = { bronce: 'Bronce', plata: 'Plata', oro: 'Oro', elite: 'Élite', toty: 'TOTY', futties: 'FUTTIES' };
-export const TIER_ORDER = ['bronce', 'plata', 'oro', 'elite', 'toty', 'futties'];
+export const TIER_NAMES = { bronce: 'Bronce', plata: 'Plata', oro: 'Oro', elite: 'Élite', toty: 'TOTY', futties: 'FUTTIES', icono: 'Icono' };
+export const TIER_ORDER = ['bronce', 'plata', 'oro', 'elite', 'toty', 'futties', 'icono'];
 export const ZONE_NAMES = ['Arriba izq.', 'Arriba der.', 'Media izq.', 'Media der.', 'Abajo izq.', 'Abajo der.'];
 
 // ---------------------------------------------------------------------
@@ -59,8 +59,8 @@ function initials(name) {
   return (parts.length > 1 ? parts[0][0] + parts.at(-1)[0] : parts[0].slice(0, 2)).toUpperCase();
 }
 export function portraitSVG(card) {
-  const kit = { bronce: '#7a4a20', plata: '#5d6b79', oro: '#a07800', elite: '#ffd86b', toty: '#0b2a9c', futties: '#7a0c55' }[card.tier];
-  const num = { bronce: '#fff', plata: '#fff', oro: '#fff', elite: '#1a1408', toty: '#ffd86b', futties: '#fff' }[card.tier];
+  const kit = { bronce: '#7a4a20', plata: '#5d6b79', oro: '#a07800', elite: '#ffd86b', toty: '#0b2a9c', futties: '#7a0c55', icono: '#f3e7c4' }[card.tier];
+  const num = { bronce: '#fff', plata: '#fff', oro: '#fff', elite: '#1a1408', toty: '#ffd86b', futties: '#fff', icono: '#6b4e00' }[card.tier];
   const gloves = card.type === 'portero'
     ? `<circle cx="12" cy="88" r="9" fill="#27e36f" stroke="#0a0a0a" stroke-width="2"/><circle cx="88" cy="88" r="9" fill="#27e36f" stroke="#0a0a0a" stroke-width="2"/>` : '';
   return `<svg viewBox="0 0 100 100" aria-hidden="true">
@@ -138,7 +138,7 @@ function specialFx(tier) {
 
 // El brillo holográfico de las especiales sigue al puntero
 document.addEventListener('pointermove', (e) => {
-  const c = e.target.closest?.('.fcard.t-toty, .fcard.t-futties');
+  const c = e.target.closest?.('.fcard.t-toty, .fcard.t-futties, .fcard.t-icono');
   if (!c) return;
   const r = c.getBoundingClientRect();
   c.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
@@ -155,7 +155,7 @@ export function cardHTML(card, { count, selected, extraClass = '', missing = fal
   if (!card) return '';
   card = { ...card, type: card.type || (card.position === 'POR' ? 'portero' : 'jugador') };
   const stats = STAT_LABELS[card.type].map(([k, l]) => `<div><span>${l}</span><b>${card.stats[k]}</b></div>`).join('');
-  const special = card.tier === 'toty' || card.tier === 'futties';
+  const special = ['toty', 'futties', 'icono'].includes(card.tier);
   const photo = photoOf(card);
   const nameSize = card.name.length > 18 ? 0.7 : card.name.length > 14 ? 0.8 : card.name.length > 11 ? 0.92 : 1;
   return `<div class="fcard t-${card.tier} ${extraClass} ${missing ? 'missing' : ''}" data-card="${esc(card.id)}" ${attrs}
