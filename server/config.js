@@ -9,7 +9,7 @@ export const ECONOMY = {
   lossReward: 50,          // monedas por perderla (si no abandonas)
   abandonReward: 0,        // monedas para quien abandona o se desconecta
   // Venta rápida de cartas repetidas (solo copias sobrantes)
-  quickSell: { bronce: 10, plata: 25, oro: 60, elite: 120, toty: 300, futties: 300, icono: 5000 },
+  quickSell: { bronce: 10, plata: 25, oro: 60, elite: 120, toty: 300, futties: 300, icono: 5000, goat: 50000 },
   adminMaxCoinsAdjust: 10_000_000,
 };
 
@@ -22,9 +22,11 @@ export const TIERS = {
   toty:    { name: 'TOTY',    special: true },
   futties: { name: 'FUTTIES', special: true },
   icono:   { name: 'Icono',   special: true },
+  goat:    { name: 'GOAT 99', special: true },
 };
 
-// Sobres: cada uno da exactamente 1 futbolista de campo y 1 portero.
+// Sobres: cada uno da 1 futbolista de campo y 1 portero, salvo que indique `players`/`keepers`.
+// Dentro de un mismo sobre no se repite carta y se intenta no repetir posición.
 // Las probabilidades (en %) se aplican por separado a cada carta y deben sumar 100.
 export const PACKS = [
   { id: 'bronce', name: 'Sobre Bronce', price: 500,
@@ -34,9 +36,11 @@ export const PACKS = [
   { id: 'oro', name: 'Sobre Oro', price: 4000,
     odds: { bronce: 0, plata: 30, oro: 55, elite: 12, toty: 1.5, futties: 1.5 } },
   { id: 'elite', name: 'Sobre Élite', price: 150000,
-    odds: { bronce: 0, plata: 0, oro: 50, elite: 38, toty: 6, futties: 6 } },
+    odds: { bronce: 0, plata: 0, oro: 49.8, elite: 38, toty: 6, futties: 6, goat: 0.2 } },
   { id: 'icono', name: 'Sobre Icono', price: 500000,
     odds: { icono: 100 } },
+  { id: 'mega', name: 'Sobre Mega', price: 5_000_000, players: 7, keepers: 3,
+    odds: { oro: 30, elite: 35, toty: 12, futties: 12, icono: 10, goat: 1 } },
 ];
 // Copia transferible de cada sobre: mismas probabilidades, el doble de precio, y sus
 // cartas se pueden vender en el mercado de transferibles.
@@ -107,10 +111,10 @@ export const SHOT = {
   },
   // Segunda estirada (reincorporación)
   second: {
-    tiers: ['oro', 'elite', 'toty', 'futties', 'icono'], // solo porteros dorados o superiores (bronce y plata no)
+    tiers: ['oro', 'elite', 'toty', 'futties', 'icono', 'goat'], // solo porteros dorados o superiores (bronce y plata no)
     chance: 0.40,         // probabilidad de "¡DOBLE PARADA!" si un portero bueno falla el lado
     patternCircles: 5,    // círculos del minijuego (tocarlos en orden)
-    minigameMs: 3_000,    // tiempo para completar el patrón
+    minigameMs: 6_000,    // tiempo para completar el patrón
     diveMs: 1_000,        // si lo completas: 1 segundo para volver a tirarte
     saveFactor: 0.65,     // la parada en segunda estirada es más difícil
   },

@@ -21,12 +21,29 @@ export function rollTier(odds, rand = secureRandom) {
   return Object.entries(odds).filter(([, p]) => p > 0).at(-1)[0];
 }
 
-function drawCard(type, odds, exclude = new Set()) {
+// Sortea una carta sin repetir las del mismo sobre e intentando no repetir posición.
+function drawCard(type, odds, exclude = new Set(), usedPositions = new Set()) {
   for (let i = 0; i < 20; i++) {
     const pool = cardsOf(type, rollTier(odds)).filter((c) => !exclude.has(c.id));
-    if (pool.length) return pool[crypto.randomInt(0, pool.length)];
+    if (!pool.length) continue;
+    const fresh = pool.filter((c) => !usedPositions.has(c.position));
+    const list = fresh.length ? fresh : pool;
+    return list[crypto.randomInt(0, list.length)];
   }
   throw new Error('No se pudo sortear carta');
+}
+
+function drawPack(pack) {
+  const cards = [];
+  const ids = new Set();
+  const positions = new Set();
+  for (const [type, n] of [['jugador', pack.players ?? 1], ['portero', pack.keepers ?? 1]]) {
+    for (let i = 0; i < n; i++) {
+      const c = drawCard(type, pack.odds, ids, type === 'jugador' ? positions : new Set());
+      ids.add(c.id); positions.add(c.position); cards.push(c);
+    }
+  }
+  return cards;
 }
 
 export function publicUser(u) {
@@ -64,18 +81,17 @@ export async function openPack(db, userId, packId) {
     const paid = await q('UPDATE users SET coins = coins - $2 WHERE id=$1 AND coins >= $2 RETURNING coins',
       [userId, pack.price]);
     if (!paid.length) throw new GameError('No tienes monedas suficientes', 402);
-    const player = drawCard('jugador', pack.odds);
-    const keeper = drawCard('portero', pack.odds);
+    const drawn = drawPack(pack);
     const owned = new Set((await q('SELECT DISTINCT card_id FROM user_cards WHERE user_id=$1', [userId])).map((r) => r.card_id));
-    for (const c of [player, keeper]) {
+    for (const c of drawn) {
       await q('INSERT INTO user_cards (user_id, card_id, source, tradable) VALUES ($1,$2,$3,$4)', [userId, c.id, `sobre:${pack.id}`, !!pack.tradable]);
     }
     await q('INSERT INTO pack_openings (user_id, pack_id, price, cards) VALUES ($1,$2,$3,$4)',
-      [userId, pack.id, pack.price, JSON.stringify([player.id, keeper.id])]);
+      [userId, pack.id, pack.price, JSON.stringify(drawn.map((c) => c.id))]);
     await ensureLineup(q, userId);
     return {
       coins: paid[0].coins,
-      cards: [player, keeper].map((c) => ({ ...c, isNew: !owned.has(c.id), tradable: !!pack.tradable })),
+      cards: drawn.map((c) => ({ ...c, isNew: !owned.has(c.id), tradable: !!pack.tradable })),
     };
   });
 }
@@ -140,7 +156,8 @@ export async function startMatchRecord(db, { id, code, home, away }) {
 }
 
 function generatePickOptions(level = pickLevel(null)) {
-  const pool = CARDS.filter((c) => c.rating >= level.min && c.rating <= level.max);
+  // Las GOAT solo salen en sobres
+  const pool = CARDS.filter((c) => c.tier !== 'goat' && c.rating >= level.min && c.rating <= level.max);
   const out = [];
   for (let i = 0; i < PICK.options && pool.length; i++) {
     const weights = pool.map((c) => PICK.weightPerPoint ** (c.rating - level.min));

@@ -72,6 +72,70 @@ const PLAYERS = [
   ['Kike García', 'DC', 'España', 73, 'F'],
   ['Jorge Molina', 'DC', 'España', 62, 'P'],
   ['Sergi Enrich', 'DC', 'España', 63, 'F'],
+  // Nuevos: todas las posiciones
+  // Defensas centrales
+  ['Virgil van Dijk', 'DFC', 'Países Bajos', 89, 'F'],
+  ['William Saliba', 'DFC', 'Francia', 87, 'B'],
+  ['Rúben Dias', 'DFC', 'Portugal', 88, 'B'],
+  ['Antonio Rüdiger', 'DFC', 'Alemania', 86, 'F'],
+  ['Marquinhos', 'DFC', 'Brasil', 86, 'P'],
+  ['Alessandro Bastoni', 'DFC', 'Italia', 86, 'T'],
+  ['Gabriel Magalhães', 'DFC', 'Brasil', 87, 'F'],
+  ['Joško Gvardiol', 'DFC', 'Croacia', 86, 'F'],
+  ['Pau Cubarsí', 'DFC', 'España', 84, 'B'],
+  ['Dean Huijsen', 'DFC', 'España', 83, 'B'],
+  ['Éder Militão', 'DFC', 'Brasil', 84, 'F'],
+  ['Kim Min-jae', 'DFC', 'Corea del Sur', 84, 'F'],
+  ['Ronald Araújo', 'DFC', 'Uruguay', 84, 'F'],
+  // Laterales derechos
+  ['Achraf Hakimi', 'LD', 'Marruecos', 89, 'T'],
+  ['Trent Alexander-Arnold', 'LD', 'Inglaterra', 86, 'T'],
+  ['Jules Koundé', 'LD', 'Francia', 86, 'B'],
+  ['Pedro Porro', 'LD', 'España', 84, 'T'],
+  ['Jeremie Frimpong', 'LD', 'Países Bajos', 84, 'B'],
+  ['Dani Carvajal', 'LD', 'España', 85, 'P'],
+  // Laterales izquierdos
+  ['Nuno Mendes', 'LI', 'Portugal', 87, 'B'],
+  ['Alphonso Davies', 'LI', 'Canadá', 84, 'F'],
+  ['Theo Hernández', 'LI', 'Francia', 85, 'F'],
+  ['Alejandro Grimaldo', 'LI', 'España', 86, 'T'],
+  ['Alejandro Balde', 'LI', 'España', 83, 'B'],
+  ['Federico Dimarco', 'LI', 'Italia', 86, 'T'],
+  ['Marc Cucurella', 'LI', 'España', 84, 'B'],
+  // Mediocentros defensivos
+  ['Rodri', 'MCD', 'España', 90, 'P'],
+  ['Declan Rice', 'MCD', 'Inglaterra', 87, 'F'],
+  ['Joshua Kimmich', 'MCD', 'Alemania', 89, 'P'],
+  ['Martín Zubimendi', 'MCD', 'España', 86, 'P'],
+  ['Aurélien Tchouaméni', 'MCD', 'Francia', 85, 'F'],
+  ['Moisés Caicedo', 'MCD', 'Ecuador', 86, 'B'],
+  ['Bruno Guimarães', 'MCD', 'Brasil', 85, 'T'],
+  // Centrocampistas
+  ['Pedri', 'MC', 'España', 89, 'T'],
+  ['Federico Valverde', 'MC', 'Uruguay', 89, 'F'],
+  ['Vitinha', 'MC', 'Portugal', 89, 'P'],
+  ['Frenkie de Jong', 'MC', 'Países Bajos', 87, 'T'],
+  ['Nicolò Barella', 'MC', 'Italia', 86, 'B'],
+  ['Fabián Ruiz', 'MC', 'España', 86, 'P'],
+  ['Alexis Mac Allister', 'MC', 'Argentina', 87, 'P'],
+  ['Luka Modrić', 'MC', 'Croacia', 84, 'T'],
+  // Mediapuntas
+  ['Kevin De Bruyne', 'MCO', 'Bélgica', 88, 'T'],
+  ['Jamal Musiala', 'MCO', 'Alemania', 88, 'T'],
+  ['Florian Wirtz', 'MCO', 'Alemania', 89, 'T'],
+  ['Dani Olmo', 'MCO', 'España', 84, 'P'],
+  ['Arda Güler', 'MCO', 'Turquía', 84, 'T'],
+  // Extremos y delanteros
+  ['Raphinha', 'EI', 'Brasil', 89, 'F'],
+  ['Ousmane Dembélé', 'ED', 'Francia', 90, 'B'],
+  ['Khvicha Kvaratskhelia', 'EI', 'Georgia', 88, 'T'],
+  ['Michael Olise', 'ED', 'Francia', 88, 'T'],
+  ['Rodrygo', 'ED', 'Brasil', 85, 'B'],
+  ['Phil Foden', 'ED', 'Inglaterra', 86, 'T'],
+  ['Rafael Leão', 'EI', 'Portugal', 85, 'F'],
+  ['Désiré Doué', 'ED', 'Francia', 85, 'B'],
+  ['Viktor Gyökeres', 'DC', 'Suecia', 86, 'F'],
+  ['Ferran Torres', 'DC', 'España', 83, 'P'],
 ];
 
 // Perfiles de portero: R = reflejos, S = parador, A = ágil (gran reincorporación)
@@ -119,6 +183,11 @@ const KEEPERS = [
   ['Dani Martín', 'POR', 'España', 72, 'S'],
   ['Iván Villar', 'POR', 'España', 64, 'A'],
   ['Álvaro Ratón', 'POR', 'España', 63, 'R'],
+  // Nuevos
+  ['Manuel Neuer', 'POR', 'Alemania', 87, 'R'],
+  ['Guglielmo Vicario', 'POR', 'Italia', 84, 'R'],
+  ['Lucas Chevalier', 'POR', 'Francia', 84, 'A'],
+  ['Robert Sánchez', 'POR', 'España', 83, 'S'],
 ];
 
 // Cartas especiales: [nombre base, categoría, mejora de estadísticas]
@@ -167,6 +236,15 @@ const SPECIALS = [
   ['Diogo Costa', 'futties', 6],
   ['Unai Simón', 'futties', 7],
   ['Yassine Bounou', 'futties', 6],
+  // GOAT: 4 lanzadores y 4 porteros con todo a 99 (muy difíciles de conseguir)
+  ['Lionel Messi', 'goat', 'max'],
+  ['Cristiano Ronaldo', 'goat', 'max'],
+  ['Kylian Mbappé', 'goat', 'max'],
+  ['Erling Haaland', 'goat', 'max'],
+  ['Thibaut Courtois', 'goat', 'max'],
+  ['Alisson Becker', 'goat', 'max'],
+  ['Gianluigi Donnarumma', 'goat', 'max'],
+  ['Emiliano Martínez', 'goat', 'max'],
 ];
 
 const PLAYER_PROFILES = {
@@ -241,7 +319,17 @@ const specials = SPECIALS.map(([name, tier, boost]) => {
   return { ...b, id: `${tier}-${b.id}`, tier, stats, rating, special: true };
 });
 
-export const CARDS = [...base, ...specials, ...icons];
+// Cartas personalizadas: GOAT con todas las estadísticas a 99. [nombre, posición, nacionalidad, perfil]
+const CUSTOM = [
+  ['Martinet', 'DC', 'España', 'B'],
+];
+const custom = CUSTOM.map(([name, position, nation, profile]) => {
+  const c = buildCard([name, position, nation, 99, profile], position === 'POR' ? 'portero' : 'jugador');
+  for (const k of Object.keys(c.stats)) c.stats[k] = 99;
+  return { ...c, id: `goat-${c.id}`, tier: 'goat', special: true };
+});
+
+export const CARDS = [...base, ...specials, ...icons, ...custom];
 export const CARD_BY_ID = new Map(CARDS.map((c) => [c.id, c]));
 
 export function cardsOf(type, tier) {
@@ -249,7 +337,7 @@ export function cardsOf(type, tier) {
 }
 
 // Comprobación de integridad: cada categoría debe tener jugadores y porteros.
-for (const t of ['bronce', 'plata', 'oro', 'elite', 'toty', 'futties', 'icono']) {
+for (const t of ['bronce', 'plata', 'oro', 'elite', 'toty', 'futties', 'icono', 'goat']) {
   for (const type of ['jugador', 'portero']) {
     if (!cardsOf(type, t).length) throw new Error(`Falta ${type} en categoría ${t}`);
   }

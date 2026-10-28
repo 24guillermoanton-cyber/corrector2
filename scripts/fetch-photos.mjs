@@ -14,7 +14,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function get(url, tries = 5) {
   for (let i = 0; i < tries; i++) {
-    const r = await fetch(url, { headers: { 'User-Agent': UA, accept: 'application/json' } });
+    const r = await fetch(url, { headers: { 'User-Agent': UA, accept: 'application/json' } }).catch(() => null);
+    if (!r) return null; // red caída o dominio bloqueado: se prueba la siguiente opción
     if (r.status === 429) { await sleep(15_000 * (i + 1)); continue; }
     return r.ok ? r.json() : null;
   }

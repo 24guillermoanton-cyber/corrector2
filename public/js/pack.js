@@ -2,17 +2,18 @@
 import { $, esc, cardHTML, burst, rain, TIER_NAMES } from './ui.js';
 import { sfx } from './sound.js';
 
-const QUALITY = { bronce: 0, plata: 1, oro: 2, elite: 3, toty: 4, futties: 4, icono: 5 };
-const COLOR = { bronce: '#e0a571', plata: '#dfe6ee', oro: '#ffd54a', elite: '#ffc21a', toty: '#2f7bff', futties: '#ff3fa4', icono: '#f5e1a4' };
+const QUALITY = { bronce: 0, plata: 1, oro: 2, elite: 3, toty: 4, futties: 4, icono: 5, goat: 6 };
+const COLOR = { bronce: '#e0a571', plata: '#dfe6ee', oro: '#ffd54a', elite: '#ffc21a', toty: '#2f7bff', futties: '#ff3fa4', icono: '#f5e1a4', goat: '#ff2a00', mega: '#ff2a00' };
 const PARTICLES = {
   bronce: ['#e0a571', '#fff'], plata: ['#fff', '#cfd6de'], oro: ['#ffd54a', '#fff6b0', '#fff'],
   elite: ['#ffd54a', '#ff9900', '#fff'], toty: ['#2f7bff', '#9cc6ff', '#ffd54a', '#fff'], futties: ['#ff3fa4', '#ffb3df', '#b46bff', '#fff'],
   icono: ['#fff8e1', '#f5e1a4', '#d4af37', '#fff'],
+  goat: ['#ff2a00', '#ffd54a', '#ff8a00', '#fff', '#000'],
 };
 
 export function openPackAnimation({ pack, cards, onAgain, onCollection, onClose, title }) {
   const el = document.createElement('div');
-  el.className = 'opening';
+  el.className = `opening${cards.length > 4 ? ' many' : ''}`;
   el.innerHTML = `
     <div class="tunnel">${'<div class="ring"></div>'.repeat(6)}<div class="spot s1"></div><div class="spot s2"></div><div class="floor"></div></div>
     <div class="aurora"></div><div class="rays"></div><div class="halo"></div><div class="flash"></div>
@@ -23,7 +24,7 @@ export function openPackAnimation({ pack, cards, onAgain, onCollection, onClose,
   const stage = $('.stage', el);
   const rays = $('.rays', el);
   const halo = $('.halo', el);
-  const setSpecial = (tier) => { el.classList.remove('special-toty', 'special-futties', 'special-icono'); halo.classList.remove('on'); if (tier) { void el.offsetWidth; el.classList.add('special-' + tier); } };
+  const setSpecial = (tier) => { el.classList.remove('special-toty', 'special-futties', 'special-icono', 'special-goat'); halo.classList.remove('on'); if (tier) { void el.offsetWidth; el.classList.add('special-' + tier); } };
   const flash = () => { const f = $('.flash', el); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); };
   const setColor = (c) => el.style.setProperty('--tc', c);
 
@@ -79,10 +80,11 @@ export function openPackAnimation({ pack, cards, onAgain, onCollection, onClose,
     if (card.tier === 'toty') rain(el, { count: 60, colors: PARTICLES.toty, star: true });
     if (card.tier === 'futties') rain(el, { count: 70, colors: PARTICLES.futties });
     if (card.tier === 'icono') rain(el, { count: 90, colors: PARTICLES.icono, star: true });
+    if (card.tier === 'goat') rain(el, { count: 140, colors: PARTICLES.goat, star: true });
     if (q >= 4) {
       // Escenario especial: aurora de color, temblor, halo y lluvia continua
       setSpecial(card.tier); sfx.boom(); sfx.sparkle();
-      stage.innerHTML = `<div class="clue"><small>CARTA ESPECIAL</small><strong style="color:${COLOR[card.tier]}">${{ toty: 'TEAM OF THE YEAR', futties: 'FUTTIES', icono: 'ICONO' }[card.tier]}</strong></div>`;
+      stage.innerHTML = `<div class="clue"><small>CARTA ESPECIAL</small><strong style="color:${COLOR[card.tier]}">${{ toty: 'TEAM OF THE YEAR', futties: 'FUTTIES', icono: 'ICONO', goat: '🐐 GOAT 99' }[card.tier]}</strong></div>`;
       await wait(1300);
     }
     if (q >= 2) {

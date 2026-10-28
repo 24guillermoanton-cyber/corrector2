@@ -70,12 +70,13 @@ test('compras simultáneas no permiten gastar más monedas de las que hay', asyn
 });
 
 test('probabilidades de sobres suman 100 y los caros son mejores', () => {
-  const value = { bronce: 1, plata: 2, oro: 3, elite: 4, toty: 5, futties: 5, icono: 6 };
+  const value = { bronce: 1, plata: 2, oro: 3, elite: 4, toty: 5, futties: 5, icono: 6, goat: 7 };
   let prev = 0;
   for (const p of PACKS.filter((x) => !x.tradable)) {
     const sum = Object.values(p.odds).reduce((a, b) => a + b, 0);
     assert.ok(Math.abs(sum - 100) < 1e-9, `${p.id} suma ${sum}`);
-    const ev = Object.entries(p.odds).reduce((s, [t, o]) => s + value[t] * o, 0);
+    const n = (p.players ?? 1) + (p.keepers ?? 1);
+    const ev = n * Object.entries(p.odds).reduce((s, [t, o]) => s + value[t] * o, 0);
     assert.ok(ev > prev, `${p.id} debe ser mejor que el anterior`);
     prev = ev;
   }
@@ -371,6 +372,31 @@ test('sobre Icono: cuesta 500.000 y trae un icono lanzador y un icono portero', 
   assert.deepEqual(r.data.cards.map((c) => c.tier), ['icono', 'icono']);
   assert.deepEqual(r.data.cards.map((c) => c.type).sort(), ['jugador', 'portero']);
   assert.equal(r.data.coins, 0);
+});
+
+test('sobre Mega: cuesta 5 millones y trae 7 lanzadores y 3 porteros distintos', async () => {
+  const pack = PACKS.find((p) => p.id === 'mega');
+  assert.equal(pack.price, 5_000_000);
+  const a = await newUser(srv, 'mega');
+  await srv.db.query('UPDATE users SET coins=$2 WHERE id=$1', [a.user.id, 5_000_000]);
+  const r = await a.post('/api/shop/open', { packId: 'mega' });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.cards.filter((c) => c.type === 'jugador').length, 7);
+  assert.equal(r.data.cards.filter((c) => c.type === 'portero').length, 3);
+  assert.equal(new Set(r.data.cards.map((c) => c.id)).size, 10, 'sin cartas repetidas');
+  assert.ok(new Set(r.data.cards.filter((c) => c.type === 'jugador').map((c) => c.position)).size >= 4, 'posiciones variadas');
+  assert.equal(r.data.coins, 0);
+});
+
+test('GOAT: 4 lanzadores y 4 porteros con 99 de media', async () => {
+  const { CARDS } = await import('../server/cards.js');
+  const goat = CARDS.filter((c) => c.tier === 'goat' && c.name !== 'Martinet');
+  assert.equal(goat.filter((c) => c.type === 'jugador').length, 4);
+  assert.equal(goat.filter((c) => c.type === 'portero').length, 4);
+  for (const c of goat) assert.equal(c.rating, 99, c.name);
+  const m = CARDS.find((c) => c.id === 'goat-j-martinet');
+  assert.equal(m.rating, 99);
+  assert.equal(m.position, 'DC');
 });
 
 test('Lamine Yamal FUTTIES tiene 99 de media', async () => {

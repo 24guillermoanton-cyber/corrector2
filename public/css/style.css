@@ -530,3 +530,12 @@ table.table { width: 100%; border-collapse: collapse; }
 .pack-art.tradable { outline: 3px dashed #27e36f; outline-offset: -8px; }
 .pack-art .pk-trade { position: absolute; top: 28px; left: 0; right: 0; font-size: .62rem; font-weight: 900; letter-spacing: .08em; color: #27e36f; text-shadow: 0 1px 2px #000; }
 @media (max-width: 420px) { .mk-grid { grid-template-columns: 1fr; } }
+
+/* GOAT 99 y Sobre Mega */
+.td-goat { background: radial-gradient(circle, #ffd54a 0 30%, #ff2a00 31% 60%, #000 61%); }
+.pack-art.p-mega { --p1: #ff6a00; --p2: #000; color: #ffd54a; box-shadow: 0 12px 48px rgba(255, 60, 0, 0.6), inset 0 0 0 3px #ffd54a; }
+.opening.special-goat { animation: stageShake 0.4s ease-in-out 4; }
+.opening.special-goat .aurora { opacity: 1; background: conic-gradient(from var(--ang), #ff2a00, #ffd54a, #000, #ff8a00, #ff2a00); animation: ringSpin 2.5s linear infinite; }
+.opening .reveal-card .fcard.t-goat { animation: cardFloat 2.4s ease-in-out infinite, glowGoat 1.6s ease-in-out infinite; }
+.opening.many .summary { gap: 10px; max-height: 70vh; overflow-y: auto; }
+.opening.many .summary .fcard { --w: min(140px, 28vw); }

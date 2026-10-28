@@ -182,7 +182,7 @@ test('doble parada: solo porteros de oro o superior, con un 40 % de probabilidad
   const { canDoubleSave } = await import('../server/match.js');
   const { SHOT } = await import('../server/config.js');
   assert.equal(SHOT.second.chance, 0.4);
-  for (const tier of ['oro', 'elite', 'toty', 'futties', 'icono']) assert.equal(canDoubleSave({ tier }), true, tier);
+  for (const tier of ['oro', 'elite', 'toty', 'futties', 'icono', 'goat']) assert.equal(canDoubleSave({ tier }), true, tier);
   for (const tier of ['bronce', 'plata']) assert.equal(canDoubleSave({ tier }), false, tier);
 });
 

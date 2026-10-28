@@ -427,7 +427,7 @@ function cardDetail(cardId, redraw) {
 routes.tienda = () => {
   const draw = () => {
     app.innerHTML = `<div class="fade-in">
-      <div class="screen-title"><div><h1>Tienda de sobres</h1><p class="muted">Cada sobre trae exactamente <b>1 lanzador</b> y <b>1 portero</b>. Solo se paga con monedas del juego.</p></div>
+      <div class="screen-title"><div><h1>Tienda de sobres</h1><p class="muted">Cada sobre trae <b>1 lanzador</b> y <b>1 portero</b> (el <b>Sobre Mega</b> trae 7 lanzadores de distintas posiciones y 3 porteros). Solo se paga con monedas del juego.</p></div>
         <span class="coins" style="font-size:1.2rem">🪙 ${state.me.coins.toLocaleString('es-ES')}</span></div>
       ${[[false, 'Sobres', ''], [true, '💱 Sobres transferibles', 'Mismas probabilidades al doble de precio. Sus cartas se pueden vender en el <a href="#/mercado">mercado de transferibles</a>.']].map(([tr, title, sub]) => `
       <h2 style="margin:18px 0 4px">${title}</h2>${sub ? `<p class="muted" style="margin:0 0 10px">${sub}</p>` : ''}
@@ -436,7 +436,7 @@ routes.tienda = () => {
         <h2 style="margin:0">${esc(p.name)}</h2>
         <div class="price">${p.price.toLocaleString('es-ES')} 🪙</div>
         <table class="odds"><tbody>${TIER_ORDER.filter((t) => p.odds[t] > 0).map((t) => `<tr><td><span class="tier-dot td-${t}"></span>${TIER_NAMES[t]}</td><td>${p.odds[t]}%</td></tr>`).join('')}</tbody></table>
-        <p class="muted" style="font-size:.8rem;margin:0">Probabilidad por carta (se aplica al lanzador y al portero por separado)</p>
+        <p class="muted" style="font-size:.8rem;margin:0">${p.players ? `Trae <b>${p.players} lanzadores y ${p.keepers} porteros</b>, sin repetir. ` : ''}Probabilidad por carta (se aplica a cada carta por separado)</p>
         <button class="btn btn-gold btn-block" data-buy="${p.id}" ${state.me.coins < p.price ? 'disabled' : ''}>${state.me.coins < p.price ? 'Monedas insuficientes' : 'Comprar'}</button>
       </div>`).join('')}</div>`).join('')}
       <div class="panel" style="margin-top:16px"><h3>¿Cómo conseguir más monedas?</h3>
@@ -526,7 +526,7 @@ const DURATIONS = { 5: '5 minutos', 60: '1 hora', 180: '3 horas', 720: '12 horas
 
 function listOnMarket(c, redraw) {
   const mk = state.meta.market;
-  const suggested = { bronce: 300, plata: 1000, oro: 4000, elite: 25000, toty: 150000, futties: 150000, icono: 600000 }[c.tier] || 1000;
+  const suggested = { bronce: 300, plata: 1000, oro: 4000, elite: 25000, toty: 150000, futties: 150000, icono: 600000, goat: 5000000 }[c.tier] || 1000;
   const m = modal(`<h2>💱 Vender ${esc(c.name)}</h2>
     <div class="row" style="align-items:flex-start;gap:18px"><div>${cardHTML(c)}</div>
     <form class="grid" id="mk-form" style="flex:1;min-width:220px">
