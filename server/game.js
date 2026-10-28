@@ -4,6 +4,11 @@ import crypto from 'node:crypto';
 import { CARDS, CARD_BY_ID, cardsOf } from './cards.js';
 import { ECONOMY, PACKS, PICK, pickLevel } from './config.js';
 
+// Condición SQL de cuenta no baneada (un baneo temporal caduca solo).
+export const ACTIVE = '(NOT banned OR (banned_until IS NOT NULL AND banned_until <= now()))';
+// Lo mismo en JavaScript sobre una fila de users.
+export const isBanned = (u) => !!u?.banned && (!u.banned_until || new Date(u.banned_until) > new Date());
+
 export class GameError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
 }
@@ -48,7 +53,7 @@ function drawPack(pack) {
 
 export function publicUser(u) {
   return {
-    id: u.id, username: u.username, crest: u.crest, role: u.role, coins: u.coins,
+    id: u.id, username: u.username, crest: u.crest, role: u.role, title: u.title || null, coins: u.coins,
     wins: u.wins, losses: u.losses, streak: u.streak, bestStreak: u.best_streak,
     shooterCard: u.shooter_card, keeperCard: u.keeper_card, tutorialSeen: u.tutorial_seen,
     createdAt: u.created_at,
@@ -94,6 +99,31 @@ export async function openPack(db, userId, packId) {
       cards: drawn.map((c) => ({ ...c, isNew: !owned.has(c.id), tradable: !!pack.tradable })),
     };
   });
+}
+
+// Compra automática: abre sobres iguales uno tras otro hasta gastar `budget` (o quedarse sin monedas).
+export const AUTO_MAX_PACKS = 300;
+export async function openPacksAuto(db, userId, packId, budget) {
+  const pack = PACKS.find((p) => p.id === packId);
+  if (!pack) throw new GameError('Ese sobre no existe');
+  const b = Number(budget);
+  if (!Number.isInteger(b) || b < pack.price) throw new GameError(`Tienes que gastar al menos ${pack.price} monedas (un sobre)`);
+  const n = Math.min(Math.floor(b / pack.price), AUTO_MAX_PACKS);
+  const packs = [];
+  let coins = null;
+  for (let i = 0; i < n; i++) {
+    try {
+      const r = await openPack(db, userId, packId);
+      packs.push(r.cards); coins = r.coins;
+    } catch (e) {
+      if (e instanceof GameError && e.status === 402 && packs.length) break; // se acabaron las monedas
+      throw e;
+    }
+  }
+  // Una carta solo cuenta como nueva la primera vez que sale en esta tanda
+  const seen = new Set();
+  for (const cards of packs) for (const c of cards) { if (seen.has(c.id)) c.isNew = false; seen.add(c.id); }
+  return { coins, opened: packs.length, spent: packs.length * pack.price, packs };
 }
 
 export async function setLineup(db, userId, { shooterCard, keeperCard }) {
@@ -204,9 +234,16 @@ export async function cancelMatchRecord(db, matchId, reason) {
 
 // ---- Player picks ----
 // Pick extra (lo crea un administrador para sí mismo o como regalo). streak_at = 0.
-export async function createPick(db, userId) {
+// Con `cardIds` el administrador elige él mismo las cartas del pick (de 1 a 5).
+export async function createPick(db, userId, cardIds = null) {
+  let options = generatePickOptions();
+  if (cardIds != null) {
+    options = [...new Set(Array.isArray(cardIds) ? cardIds.map(String) : [])];
+    if (!options.length || options.length > 5) throw new GameError('Elige entre 1 y 5 cartas para el player pick');
+    if (options.some((id) => !CARD_BY_ID.has(id))) throw new GameError('Carta no válida');
+  }
   const [pk] = await db.query('INSERT INTO player_picks (user_id, options, streak_at) VALUES ($1,$2,0) RETURNING id',
-    [userId, JSON.stringify(generatePickOptions())]);
+    [userId, JSON.stringify(options)]);
   return pk.id;
 }
 
@@ -238,7 +275,7 @@ export async function leaderboard(db, kind, limit = 50) {
   const order = kind === 'derrotas'
     ? 'losses DESC, wins ASC, created_at ASC, id ASC'
     : 'wins DESC, losses ASC, created_at ASC, id ASC';
-  const rows = await db.query(`SELECT id, username, crest, wins, losses FROM users WHERE NOT banned
+  const rows = await db.query(`SELECT id, username, crest, role, title, wins, losses FROM users WHERE ${ACTIVE}
                                ORDER BY ${order} LIMIT $1`, [limit]);
-  return rows.map((r, i) => ({ pos: i + 1, id: r.id, username: r.username, crest: r.crest, wins: r.wins, losses: r.losses }));
+  return rows.map((r, i) => ({ pos: i + 1, id: r.id, username: r.username, crest: r.crest, role: r.role, title: r.title, wins: r.wins, losses: r.losses }));
 }

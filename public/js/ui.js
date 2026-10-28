@@ -6,6 +6,15 @@ export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export const TIER_NAMES = { bronce: 'Bronce', plata: 'Plata', oro: 'Oro', elite: 'Élite', toty: 'TOTY', futties: 'FUTTIES', icono: 'Icono', goat: 'GOAT 99' };
+export const TITLE_NAMES = { og: 'OG', leyenda: 'LEYENDA', rey: 'REY', vip: 'VIP', crack: 'CRACK' };
+// Nombre de un jugador con sus distintivos: los administradores salen en morado y con
+// la etiqueta ADMIN; los títulos (OG, LEYENDA…) llevan un degradado de colores animado.
+export function nameTag(name, { role, title } = {}) {
+  const t = TITLE_NAMES[title];
+  return `<span class="uname${role === 'admin' ? ' is-admin' : ''}">${esc(name)}</span>`
+    + (role === 'admin' ? '<span class="ubadge b-admin">ADMIN</span>' : '')
+    + (t ? `<span class="ubadge b-title t-${esc(title)}">${t}</span>` : '');
+}
 export const TIER_ORDER = ['bronce', 'plata', 'oro', 'elite', 'toty', 'futties', 'icono', 'goat'];
 export const ZONE_NAMES = ['Arriba izq.', 'Arriba der.', 'Media izq.', 'Media der.', 'Abajo izq.', 'Abajo der.'];
 

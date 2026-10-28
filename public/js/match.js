@@ -1,5 +1,5 @@
 // Sala privada y partido: sala de espera, cuenta atrás, portería interactiva, animaciones y resultados.
-import { $, $$, esc, crestSVG, cardHTML, keeperFigure, shooterFigure, BALL_SVG, ZONE_NAMES, toast, modal, confirmModal, burst, sleep } from './ui.js';
+import { $, $$, esc, crestSVG, cardHTML, keeperFigure, shooterFigure, BALL_SVG, ZONE_NAMES, toast, modal, confirmModal, burst, sleep, nameTag } from './ui.js';
 import { sfx } from './sound.js';
 
 // Geometría de la portería (en % del campo)
@@ -119,9 +119,9 @@ export function renderSala(app, ctx) {
     const crest = (p) => state.crestById(p.crest);
     app.innerHTML = `<div class="fade-in panel" style="max-width:760px;margin:0 auto">
       <div class="vs-screen">
-        <div>${crestSVG(crest(p0))}<h3>${esc(p0.name)}</h3>${cardHTML(p0.shooter)}</div>
+        <div>${crestSVG(crest(p0))}<h3>${nameTag(p0.name, p0)}</h3>${cardHTML(p0.shooter)}</div>
         <div><div class="vs">VS</div><div class="countdown" id="cd">3</div></div>
-        <div>${crestSVG(crest(p1))}<h3>${esc(p1.name)}</h3>${cardHTML(p1.shooter)}</div>
+        <div>${crestSVG(crest(p1))}<h3>${nameTag(p1.name, p1)}</h3>${cardHTML(p1.shooter)}</div>
       </div>
       <p class="center muted">Lanza primero <b>${esc(p0.name)}</b>. Cinco penaltis por equipo, alternando.</p></div>`;
     $$('.vs-screen .fcard', app).forEach((c) => { c.style.setProperty('--w', '110px'); c.style.margin = '8px auto'; });
@@ -500,14 +500,14 @@ function createMatch(app, ctx) {
       const p = st.players[side];
       const turn = st.status === 'playing' && st.cur?.side === side;
       return `<div class="sb-team ${side ? 'right' : ''}">${crestSVG(crestOf(side))}
-        <div style="min-width:0"><div class="sb-name">${turn ? '<span class="sb-turn" title="Lanza ahora"></span>' : ''}${esc(p.name)}${side === st.you ? ' (tú)' : ''}
+        <div style="min-width:0"><div class="sb-name">${turn ? '<span class="sb-turn" title="Lanza ahora"></span>' : ''}${nameTag(p.name, p)}${side === st.you ? ' (tú)' : ''}
         ${p.connected ? '' : '<span class="offline"> · desconectado</span>'}
         <small>${esc(p.shooter.name)} · ${esc(p.keeper.name)}</small></div><div class="sb-kicks">${dots(side)}</div></div></div>`;
     };
     el.sb.innerHTML = `${team(0)}<div class="sb-score">${st.score[0]} - ${st.score[1]}<small>${st.suddenDeath ? 'MUERTE SÚBITA' : `RONDA ${Math.min(st.round, 5)} DE 5`}</small></div>${team(1)}`;
   }
   function renderLineups() {
-    el.lineups.innerHTML = st.players.map((p, i) => `<p style="margin:6px 0"><b>${esc(p.name)}${i === st.you ? ' (tú)' : ''}</b></p>
+    el.lineups.innerHTML = st.players.map((p, i) => `<p style="margin:6px 0"><b>${nameTag(p.name, p)}${i === st.you ? ' (tú)' : ''}</b></p>
       <div class="mini-lineup">${cardHTML(p.shooter)}${cardHTML(p.keeper)}</div>`).join('');
     $$('.fcard', el.lineups).forEach((c) => c.style.setProperty('--w', '100px'));
   }

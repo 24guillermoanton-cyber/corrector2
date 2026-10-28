@@ -111,7 +111,7 @@ Resolución (valores en `server/config.js → SHOT`):
 ### ⚡ ¡Doble parada!
 Solo para porteros **de oro o superior** (bronce y plata no). Si el portero se tira al lado equivocado, hay un **40 %** de probabilidad de que aparezca **¡DOBLE PARADA!** (la zona del disparo sigue oculta):
 
-- El portero tiene 6 segundos para tocar en orden 5 círculos numerados (minijuego tipo Pokémon GO).
+- El portero tiene 6 segundos (3 si su reincorporación es menor de 80) para tocar en orden 5 círculos numerados (minijuego tipo Pokémon GO).
 - Si lo completa, tiene **1 segundo** para volver a tirarse a otra zona.
 - Si acierta la zona, la probabilidad de parada es el 65 % de la normal.
 

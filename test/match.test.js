@@ -179,11 +179,13 @@ test('segunda estirada del portero (reincorporación alta + disparo flojo)', asy
 });
 
 test('doble parada: solo porteros de oro o superior, con un 40 % de probabilidad', async () => {
-  const { canDoubleSave } = await import('../server/match.js');
+  const { canDoubleSave, minigameMsFor } = await import('../server/match.js');
   const { SHOT } = await import('../server/config.js');
   assert.equal(SHOT.second.chance, 0.4);
   for (const tier of ['oro', 'elite', 'toty', 'futties', 'icono', 'goat']) assert.equal(canDoubleSave({ tier }), true, tier);
   for (const tier of ['bronce', 'plata']) assert.equal(canDoubleSave({ tier }), false, tier);
+  assert.equal(minigameMsFor({ stats: { reincorporacion: 70 } }), 3000);
+  assert.equal(minigameMsFor({ stats: { reincorporacion: 90 } }), 6000);
 });
 
 test('desconexión: pausa, reconexión y derrota si no vuelve', async () => {

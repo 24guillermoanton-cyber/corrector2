@@ -1,5 +1,5 @@
 // Penalti Stars — cliente. Navegación, pantallas y comunicación con el servidor.
-import { $, $$, esc, crestSVG, cardHTML, statBars, toast, modal, confirmModal, setPhotos, photoCredit, TIER_NAMES, TIER_ORDER, STAT_NAMES } from './ui.js';
+import { $, $$, esc, crestSVG, cardHTML, statBars, toast, modal, confirmModal, setPhotos, photoCredit, nameTag, TIER_NAMES, TIER_ORDER, TITLE_NAMES, STAT_NAMES } from './ui.js';
 import { sfx, isMuted, setMuted } from './sound.js';
 import { openPackAnimation } from './pack.js';
 import { renderSala } from './match.js';
@@ -61,7 +61,7 @@ function renderHeader() {
   $('#topbar').hidden = !me;
   if (!me) return;
   $('#coins-chip').textContent = `🪙 ${me.coins.toLocaleString('es-ES')}`;
-  $('#me-link').innerHTML = `${crestSVG(state.crestById(me.crest))}<span class="me-name">${esc(me.username)}</span>`;
+  $('#me-link').innerHTML = `${crestSVG(state.crestById(me.crest))}<span class="me-name">${nameTag(me.username, me)}</span>`;
   $('#nav-admin').hidden = me.role !== 'admin';
   const b = $('#picks-badge');
   b.hidden = !state.pendingPicks; b.textContent = state.pendingPicks;
@@ -106,6 +106,7 @@ function connectSocket() {
     refreshMe();
     bus.emit('market', ev);
   });
+  s.on('coins', ({ coins }) => setCoins(coins));
   s.on('gift', (g) => {
     refreshMe();
     showGift(g, { getCard: (id) => state.cards.get(id), onPicks: () => { location.hash = '#/picks'; } });
@@ -250,7 +251,7 @@ function streakHTML(streak) {
 function profileHero(u) {
   return `<div class="profile-hero">
     <div class="crest-big">${crestSVG(state.crestById(u.crest))}</div>
-    <div><h1>${esc(u.username)}</h1>
+    <div><h1>${nameTag(u.username, u)}</h1>
       <div class="wl"><span class="win">${u.wins}<small>VICTORIAS</small></span><span class="loss">${u.losses}<small>DERROTAS</small></span></div>
       <p class="muted" style="margin:6px 0 0">${esc(state.crestById(u.crest).name)}${u.role === 'admin' ? ' · 🛡️ Administrador' : ''}</p></div></div>`;
 }
@@ -279,6 +280,14 @@ routes.inicio = () => {
 // ---------------------------------------------------------------------
 //  Perfil
 // ---------------------------------------------------------------------
+// Cartas de un jugador, de mejor a peor (categoría y media), para mostrarlas junto a su perfil.
+function ownedCardsHTML(collection) {
+  const list = collection.map((o) => ({ card: state.cards.get(o.cardId), count: o.count })).filter((x) => x.card)
+    .sort((a, b) => TIER_ORDER.indexOf(b.card.tier) - TIER_ORDER.indexOf(a.card.tier) || b.card.rating - a.card.rating);
+  if (!list.length) return '<p class="muted">Todavía no tiene cartas.</p>';
+  return `<div class="profile-cards">${list.map((x) => cardHTML(x.card, { count: x.count })).join('')}</div>`;
+}
+
 routes.perfil = () => {
   const me = state.me;
   const total = me.wins + me.losses;
@@ -286,7 +295,10 @@ routes.perfil = () => {
   const shooter = state.cards.get(me.shooterCard);
   const keeper = state.cards.get(me.keeperCard);
   app.innerHTML = `<div class="fade-in grid">
-    <div class="panel">${profileHero(me)}</div>
+    <div class="profile-top">
+      <div class="panel">${profileHero(me)}</div>
+      <div class="panel"><h2>Tus cartas (${owned})</h2>${ownedCardsHTML(state.collection)}</div>
+    </div>
     <div class="panel"><div class="statgrid">
       <div class="stat"><b>${total}</b><span>Partidos</span></div>
       <div class="stat"><b>${total ? Math.round((me.wins / total) * 100) : 0}%</b><span>Victorias</span></div>
@@ -438,12 +450,67 @@ routes.tienda = () => {
         <table class="odds"><tbody>${TIER_ORDER.filter((t) => p.odds[t] > 0).map((t) => `<tr><td><span class="tier-dot td-${t}"></span>${TIER_NAMES[t]}</td><td>${p.odds[t]}%</td></tr>`).join('')}</tbody></table>
         <p class="muted" style="font-size:.8rem;margin:0">${p.players ? `Trae <b>${p.players} lanzadores y ${p.keepers} porteros</b>, sin repetir. ` : ''}Probabilidad por carta (se aplica a cada carta por separado)</p>
         <button class="btn btn-gold btn-block" data-buy="${p.id}" ${state.me.coins < p.price ? 'disabled' : ''}>${state.me.coins < p.price ? 'Monedas insuficientes' : 'Comprar'}</button>
+        <button class="btn btn-block" data-auto="${p.id}" ${state.me.coins < p.price ? 'disabled' : ''}>⚡ Compra automática</button>
       </div>`).join('')}</div>`).join('')}
       <div class="panel" style="margin-top:16px"><h3>¿Cómo conseguir más monedas?</h3>
         <p class="muted" style="margin:0">Gana tandas: <b class="win">+${state.meta.economy.winReward}</b> por victoria y <b>+${state.meta.economy.lossReward}</b> por derrota (abandonar no da monedas). También puedes vender cartas repetidas en tu colección.</p></div>
     </div>`;
     $$('[data-buy]').forEach((b) => (b.onclick = () => buy(state.meta.packs.find((p) => p.id === b.dataset.buy))));
+    $$('[data-auto]').forEach((b) => (b.onclick = () => autoBuy(state.meta.packs.find((p) => p.id === b.dataset.auto))));
   };
+  // Compra automática: pregunta cuánto gastar, abre todos los sobres en el servidor y enseña
+  // las cartas sobre tras sobre sin animación. "Saltar" muestra todas de golpe.
+  function autoBuy(pack) {
+    const m = modal(`<h2>⚡ Compra automática · ${esc(pack.name)}</h2>
+      <p class="muted">¿Cuánto dinero te quieres gastar? Se abrirán ${esc(pack.name)} (${pack.price.toLocaleString('es-ES')} 🪙 cada uno) uno tras otro, sin animación.</p>
+      <form class="grid" id="auto-form"><input name="budget" type="number" min="${pack.price}" step="1" required placeholder="Ej.: 100000" value="${Math.min(state.me.coins, pack.price * 10)}">
+      <p class="muted" id="auto-n" style="margin:0"></p>
+      <div class="modal-actions"><button type="button" class="btn" data-close>Cancelar</button><button class="btn btn-gold">Gastar y abrir</button></div></form>`);
+    const input = $('[name=budget]', m.el);
+    const upd = () => {
+      const n = Math.floor(Math.min(Number(input.value) || 0, state.me.coins) / pack.price);
+      $('#auto-n', m.el).textContent = `${n} sobre${n === 1 ? '' : 's'} · tienes ${state.me.coins.toLocaleString('es-ES')} 🪙`;
+    };
+    input.addEventListener('input', upd); upd();
+    $('#auto-form', m.el).onsubmit = async (ev) => {
+      ev.preventDefault();
+      const btn = $('#auto-form .btn-gold', m.el); btn.disabled = true; btn.textContent = 'Abriendo…';
+      try {
+        const r = await api('POST', '/api/shop/auto', { packId: pack.id, budget: Math.floor(Number(input.value)) });
+        m.close(); setCoins(r.coins); refreshMe(); showAutoResult(pack, r);
+      } catch (err) { btn.disabled = false; btn.textContent = 'Gastar y abrir'; toast(err.message, 'err'); }
+    };
+  }
+  function showAutoResult(pack, r) {
+    const m = modal(`<h2>⚡ ${r.opened} × ${esc(pack.name)}</h2>
+      <p class="muted">Gastado: <b>${r.spent.toLocaleString('es-ES')} 🪙</b> · Te quedan <b>${r.coins.toLocaleString('es-ES')} 🪙</b></p>
+      <div class="row"><b id="auto-prog"></b><span class="spacer"></span><button class="btn btn-sm" id="auto-skip">Saltar ⏭</button></div>
+      <div class="auto-cards" id="auto-cards"></div>
+      <div class="modal-actions"><a class="btn" href="#/coleccion" data-close>Ver colección</a><button class="btn btn-primary" data-close>Cerrar</button></div>`,
+    { wide: true, onClose: () => { stop = true; if (currentRoute().name === 'tienda') draw(); } });
+    let stop = false;
+    let i = 0;
+    const box = $('#auto-cards', m.el);
+    const show = (cards) => box.insertAdjacentHTML('afterbegin', cards.map((c) => `<div class="auto-card">${cardHTML(c)}
+      <span class="${c.isNew ? 'label-new' : 'label-dup'}">${c.isNew ? 'NUEVA' : 'REPETIDA'}</span></div>`).join(''));
+    const prog = () => { $('#auto-prog', m.el).textContent = `Sobre ${i} de ${r.opened}`; };
+    const skip = () => {
+      stop = true;
+      // Todas las cartas de golpe, de mejor a peor
+      const all = r.packs.flat().sort((a, b) => TIER_ORDER.indexOf(b.tier) - TIER_ORDER.indexOf(a.tier) || b.rating - a.rating);
+      box.innerHTML = ''; show(all.reverse()); i = r.opened; prog();
+      $('#auto-skip', m.el).hidden = true;
+    };
+    $('#auto-skip', m.el).onclick = skip;
+    (async () => {
+      while (!stop && i < r.opened) {
+        show(r.packs[i]); i++; prog();
+        if (r.packs[i - 1].some((c) => TIER_ORDER.indexOf(c.tier) >= TIER_ORDER.indexOf('toty'))) sfx.sparkle(); else sfx.tick();
+        await new Promise((res) => setTimeout(res, 450));
+      }
+      if (!stop) $('#auto-skip', m.el).hidden = true;
+    })();
+  }
   async function buy(pack, skipConfirm = false) {
     if (!skipConfirm) {
       const ok = await confirmModal(`Comprar ${pack.name}`, `¿Quieres gastar <b>${pack.price} 🪙</b>? Te quedarán ${(state.me.coins - pack.price).toLocaleString('es-ES')}.`, { okText: 'Comprar y abrir' });
@@ -672,7 +739,7 @@ routes.clasificacion = () => {
     const lb = $('#lb'); if (!lb) return;
     lb.innerHTML = `<table class="table"><thead><tr><th>#</th><th>Equipo</th><th>Victorias</th><th>Derrotas</th></tr></thead><tbody>
       ${rows.map((r) => `<tr class="${r.id === state.me.id ? 'me' : ''}"><td class="num pos-${r.pos}">${r.pos}</td>
-        <td><div class="who">${crestSVG(state.crestById(r.crest))}${esc(r.username)}</div></td>
+        <td><a class="who" href="#/jugador/${r.id}">${crestSVG(state.crestById(r.crest))}${nameTag(r.username, r)}</a></td>
         <td class="num win">${r.wins}</td><td class="num loss">${r.losses}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Todavía no hay jugadores.</td></tr>'}
       </tbody></table>`;
   };
@@ -680,6 +747,27 @@ routes.clasificacion = () => {
     type = b.dataset.t; $$('.tabs button').forEach((x) => x.classList.toggle('active', x === b)); load();
   }));
   load().catch((e) => toast(e.message, 'err'));
+};
+
+// ---------------------------------------------------------------------
+//  Perfil de otro jugador (con sus cartas)
+// ---------------------------------------------------------------------
+routes.jugador = ([id]) => {
+  if (Number(id) === state.me.id) { location.hash = '#/perfil'; return; }
+  app.innerHTML = '<div class="spinner"></div>';
+  api('GET', `/api/users/${Number(id) || 0}`).then(({ user: u, collection }) => {
+    const shooter = state.cards.get(u.shooter_card);
+    const keeper = state.cards.get(u.keeper_card);
+    app.innerHTML = `<div class="fade-in grid">
+      <div class="profile-top">
+        <div class="panel">${profileHero(u)}
+          <p class="muted" style="margin:12px 0 0">Racha: <b>${u.streak}</b> · Mejor racha: <b>${u.best_streak}</b></p>
+          ${shooter && keeper ? `<div class="lineup" style="margin-top:12px"><div class="slot"><h4>LANZADOR</h4>${cardHTML(shooter)}</div><div class="slot"><h4>PORTERO</h4>${cardHTML(keeper)}</div></div>` : ''}</div>
+        <div class="panel"><h2>Sus cartas (${collection.length})</h2>${ownedCardsHTML(collection)}</div>
+      </div>
+      <div class="row"><a class="btn" href="#/clasificacion">← Clasificación</a></div></div>`;
+    $$('.lineup .fcard').forEach((c) => c.style.setProperty('--w', '120px'));
+  }).catch((e) => { app.innerHTML = `<div class="panel"><p>${esc(e.message)}</p></div>`; });
 };
 
 // ---------------------------------------------------------------------
@@ -694,6 +782,57 @@ function giftFields() {
     ${cards.map((c) => `<option value="${esc(c.id)}">${esc(TIER_NAMES[c.tier])} · ${c.rating} · ${esc(c.name)} (${c.type === 'portero' ? 'POR' : esc(c.position)})</option>`).join('')}</select>
     <label class="row" style="gap:6px;margin:0;white-space:nowrap"><input type="checkbox" name="pick" style="width:auto"> Player pick</label>`;
 }
+// Selector de cartas para el player pick personalizado (buscar y añadir hasta 5).
+function pickPickerHTML() {
+  return `<div class="pick-picker"><input class="pp-q" placeholder="Buscar carta (nombre, posición, categoría…)" autocomplete="off">
+    <select class="pp-sel" size="6"></select>
+    <div class="row"><button type="button" class="btn btn-sm pp-add">➕ Añadir carta</button><span class="muted pp-n">0/5</span></div>
+    <div class="pp-chosen"></div></div>`;
+}
+function bindPickPicker(root) {
+  const all = [...state.cards.values()]
+    .sort((a, b) => TIER_ORDER.indexOf(b.tier) - TIER_ORDER.indexOf(a.tier) || b.rating - a.rating || a.name.localeCompare(b.name));
+  const chosen = [];
+  const sel = $('.pp-sel', root);
+  const fill = () => {
+    const q = $('.pp-q', root).value.trim().toLowerCase();
+    sel.innerHTML = all.filter((c) => !q || `${c.name} ${c.position} ${TIER_NAMES[c.tier]} ${c.rating}`.toLowerCase().includes(q)).slice(0, 200)
+      .map((c) => `<option value="${esc(c.id)}">${esc(TIER_NAMES[c.tier])} · ${c.rating} · ${esc(c.name)} (${c.type === 'portero' ? 'POR' : esc(c.position)})</option>`).join('');
+  };
+  const draw = () => {
+    $('.pp-n', root).textContent = `${chosen.length}/5`;
+    $('.pp-chosen', root).innerHTML = chosen.map((id, i) => `<div class="pp-item">${cardHTML(state.cards.get(id))}<button type="button" class="btn btn-sm btn-danger" data-rm="${i}">Quitar</button></div>`).join('');
+  };
+  $('.pp-q', root).addEventListener('input', fill);
+  const add = () => {
+    if (!sel.value) return toast('Elige una carta de la lista', 'err');
+    if (chosen.length >= 5) return toast('Máximo 5 cartas por pick', 'err');
+    if (!chosen.includes(sel.value)) chosen.push(sel.value);
+    draw();
+  };
+  $('.pp-add', root).onclick = add;
+  sel.addEventListener('dblclick', add);
+  $('.pp-chosen', root).addEventListener('click', (e) => {
+    const b = e.target.closest('[data-rm]'); if (b) { chosen.splice(Number(b.dataset.rm), 1); draw(); }
+  });
+  fill(); draw();
+  return () => chosen.slice();
+}
+function openCustomPick(userId, name) {
+  const m = modal(`<h2>🎴 Player pick para ${esc(name)}</h2>
+    <p class="muted">Elige las cartas que saldrán en el pick (de 1 a 5). ${userId === state.me.id ? 'Luego eliges tú con cuál te quedas.' : 'El jugador elegirá con cuál se queda.'}</p>
+    ${pickPickerHTML()}
+    <div class="modal-actions"><button class="btn" data-close>Cancelar</button><button class="btn btn-gold" id="pp-ok">Crear player pick</button></div>`, { wide: true });
+  const get = bindPickPicker(m.el);
+  $('#pp-ok', m.el).onclick = async () => {
+    try {
+      await api('POST', `/api/admin/users/${userId}/pick`, { cardIds: get() });
+      m.close(); sfx.sparkle();
+      if (userId === state.me.id) { refreshMe(); location.hash = '#/picks'; } else toast(`Player pick enviado a ${name}`);
+    } catch (err) { toast(err.message, 'err'); }
+  };
+}
+
 function giftBody(form) {
   const fd = new FormData(form);
   return { coins: fd.get('coins') ? Number(fd.get('coins')) : 0, cardId: fd.get('cardId') || null, pick: fd.get('pick') === 'on' };
@@ -707,8 +846,9 @@ routes.admin = () => {
       <input name="amount" type="number" step="1" required placeholder="Cantidad" style="width:160px"><button class="btn btn-gold">Aplicar</button>
       <span class="muted">Saldo actual: <b id="adm-coins">${state.me.coins}</b></span></form></div>
     <div class="panel"><h3>🎴 Player picks</h3>
-      <div class="row"><button class="btn btn-gold" id="adm-pick">Abrir un player pick</button>
-      <span class="muted">Se crea un pick nuevo para ti y vas directo a elegir la carta.</span></div></div>
+      <div class="row"><button class="btn btn-gold" id="adm-pick">Abrir un player pick al azar</button>
+      <button class="btn btn-gold" id="adm-pick-custom">🎯 Player pick con las cartas que quiera</button>
+      <span class="muted">Para otro jugador, usa el botón 🎴 de su fila.</span></div></div>
     <div class="panel"><h3>🎁 Regalar a todos los conectados</h3>
       <form class="row" id="gift-all-form">${giftFields()}<button class="btn btn-gold">Regalar a todos</button></form></div>
     <div class="panel table-wrap"><h3>Cuentas registradas</h3><div id="adm-users"><div class="spinner"></div></div></div>
@@ -719,12 +859,16 @@ routes.admin = () => {
     $('#adm-sum').textContent = `${users.length} cuentas · ${users.filter((u) => u.online).length} conectadas ahora · ${users.filter((u) => u.banned).length} baneadas`;
     $('#adm-users').innerHTML = `<table class="table"><thead><tr><th></th><th>Usuario</th><th>Rol</th><th>V</th><th>D</th><th>Racha</th><th>Monedas</th><th>Alta</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
       ${users.map((u) => `<tr><td><span class="online-dot ${u.online ? 'on' : ''}" title="${u.online ? 'Conectado' : 'Desconectado'}"></span></td>
-        <td><div class="who">${crestSVG(state.crestById(u.crest))}${esc(u.username)}</div></td><td>${u.role === 'admin' ? '🛡️ admin' : 'usuario'}</td>
+        <td><div class="who">${crestSVG(state.crestById(u.crest))}${nameTag(u.username, u)}</div></td><td>${u.role === 'admin' ? '🛡️ admin' : 'usuario'}</td>
         <td class="win"><b>${u.wins}</b></td><td class="loss"><b>${u.losses}</b></td><td>${u.streak}</td><td>${u.coins}</td>
         <td class="muted">${new Date(u.created_at).toLocaleDateString('es-ES')}</td>
-        <td>${u.banned ? '<span class="tag loss">BANEADO</span>' : u.online ? '<span class="tag win">EN LÍNEA</span>' : '<span class="muted">—</span>'}</td>
-        <td>${u.id === state.me.id ? '<span class="muted">(tú)</span>' : `<div class="row" style="flex-wrap:nowrap">
+        <td>${u.banned ? `<span class="tag loss">BANEADO</span>${u.banned_until ? `<br><small class="muted">hasta ${new Date(u.banned_until).toLocaleString('es-ES')}</small>` : ''}` : u.online ? '<span class="tag win">EN LÍNEA</span>' : '<span class="muted">—</span>'}</td>
+        <td>${u.id === state.me.id ? '<span class="muted">(tú)</span>' : `<div class="row" style="flex-wrap:wrap;min-width:330px">
           ${u.banned ? '' : `<button class="btn btn-sm btn-gold" data-gift="${u.id}" data-name="${esc(u.username)}">🎁 Regalar</button>`}
+          <button class="btn btn-sm" data-pick="${u.id}" data-name="${esc(u.username)}">🎴 Pick</button>
+          <button class="btn btn-sm" data-coins="${u.id}" data-name="${esc(u.username)}" data-v="${u.coins}">🪙 Monedas</button>
+          <button class="btn btn-sm" data-title="${u.id}" data-name="${esc(u.username)}" data-v="${esc(u.title || '')}">🏷️ Título</button>
+          <button class="btn btn-sm" data-role="${u.id}" data-name="${esc(u.username)}" data-v="${u.role === 'admin' ? 'user' : 'admin'}">${u.role === 'admin' ? 'Quitar admin' : '🛡️ Dar admin'}</button>
           <button class="btn btn-sm" data-ban="${u.id}" data-v="${u.banned ? '0' : '1'}">${u.banned ? 'Desbanear' : 'Banear'}</button>
           <button class="btn btn-sm btn-danger" data-del="${u.id}" data-name="${esc(u.username)}">Borrar</button></div>`}</td></tr>`).join('')}
       </tbody></table>`;
@@ -736,7 +880,46 @@ routes.admin = () => {
     const ban = e.target.closest('[data-ban]');
     const del = e.target.closest('[data-del]');
     const gift = e.target.closest('[data-gift]');
+    const pk = e.target.closest('[data-pick]');
+    const coins = e.target.closest('[data-coins]');
+    const title = e.target.closest('[data-title]');
+    const role = e.target.closest('[data-role]');
     try {
+      if (pk) openCustomPick(Number(pk.dataset.pick), pk.dataset.name);
+      if (coins) {
+        const m = modal(`<h2>🪙 Monedas de ${esc(coins.dataset.name)}</h2><p class="muted">Saldo actual: <b>${Number(coins.dataset.v).toLocaleString('es-ES')}</b></p>
+          <form class="grid" id="uc-form"><select name="mode"><option value="remove">Quitar</option><option value="add">Añadir</option><option value="set">Fijar saldo</option></select>
+          <input name="amount" type="number" min="0" step="1" required placeholder="Cantidad">
+          <div class="modal-actions"><button type="button" class="btn" data-close>Cancelar</button><button class="btn btn-gold">Aplicar</button></div></form>`);
+        $('#uc-form', m.el).onsubmit = async (ev) => {
+          ev.preventDefault();
+          const fd = new FormData(ev.target);
+          const n = Math.abs(Number(fd.get('amount')));
+          const mode = fd.get('mode');
+          try {
+            const r = await api('POST', `/api/admin/users/${coins.dataset.coins}/coins`, { mode: mode === 'set' ? 'set' : 'add', amount: mode === 'remove' ? -n : n });
+            m.close(); toast(`${coins.dataset.name} tiene ahora ${r.coins.toLocaleString('es-ES')} 🪙`); load();
+          } catch (err) { toast(err.message, 'err'); }
+        };
+      }
+      if (title) {
+        const m = modal(`<h2>🏷️ Título de ${esc(title.dataset.name)}</h2><p class="muted">Se verá junto a su nombre para todos los jugadores.</p>
+          <div class="title-grid"><button class="btn" data-t="">Sin título</button>
+          ${Object.entries(TITLE_NAMES).map(([k, v]) => `<button class="btn" data-t="${k}"><span class="ubadge b-title t-${k}">${v}</span></button>`).join('')}</div>
+          <div class="modal-actions"><button type="button" class="btn" data-close>Cancelar</button></div>`);
+        m.el.addEventListener('click', async (ev) => {
+          const b = ev.target.closest('[data-t]'); if (!b) return;
+          try { await api('POST', `/api/admin/users/${title.dataset.title}/title`, { title: b.dataset.t }); m.close(); toast('Título actualizado'); load(); } catch (err) { toast(err.message, 'err'); }
+        });
+      }
+      if (role) {
+        const toAdmin = role.dataset.v === 'admin';
+        if (!(await confirmModal(toAdmin ? 'Dar administrador' : 'Quitar administrador',
+          toAdmin ? `<b>${esc(role.dataset.name)}</b> podrá usar el panel de administración (regalar, banear, dar monedas…).` : `<b>${esc(role.dataset.name)}</b> dejará de ser administrador.`,
+          { okText: toAdmin ? 'Dar admin' : 'Quitar admin', danger: !toAdmin }))) return;
+        await api('POST', `/api/admin/users/${role.dataset.role}/role`, { role: role.dataset.v });
+        toast(toAdmin ? 'Ahora es administrador' : 'Ya no es administrador'); load();
+      }
       if (gift) {
         const m = modal(`<h2>🎁 Regalar a ${esc(gift.dataset.name)}</h2>
           <form class="grid" id="gift-form">${giftFields()}
@@ -751,9 +934,24 @@ routes.admin = () => {
       }
       if (ban) {
         const banned = ban.dataset.v === '1';
-        if (banned && !(await confirmModal('Banear cuenta', 'El usuario será desconectado y no podrá iniciar sesión hasta que lo desbanees.', { okText: 'Banear', danger: true }))) return;
-        await api('POST', `/api/admin/users/${ban.dataset.ban}/ban`, { banned });
-        toast(banned ? 'Cuenta baneada' : 'Cuenta desbaneada'); load();
+        if (!banned) {
+          await api('POST', `/api/admin/users/${ban.dataset.ban}/ban`, { banned: false });
+          toast('Cuenta desbaneada'); load();
+        } else {
+          const m = modal(`<h2>⛔ Banear cuenta</h2><p class="muted">El usuario será desconectado y no podrá entrar hasta que acabe el baneo.</p>
+            <form class="grid" id="ban-form"><select name="minutes">
+              <option value="10">10 minutos</option><option value="60">1 hora</option><option value="360">6 horas</option>
+              <option value="1440" selected>1 día</option><option value="4320">3 días</option><option value="10080">1 semana</option>
+              <option value="43200">1 mes</option><option value="0">Para siempre</option></select>
+            <div class="modal-actions"><button type="button" class="btn" data-close>Cancelar</button><button class="btn btn-danger">Banear</button></div></form>`);
+          $('#ban-form', m.el).onsubmit = async (ev) => {
+            ev.preventDefault();
+            try {
+              await api('POST', `/api/admin/users/${ban.dataset.ban}/ban`, { banned: true, minutes: Number(new FormData(ev.target).get('minutes')) });
+              m.close(); toast('Cuenta baneada'); load();
+            } catch (err) { toast(err.message, 'err'); }
+          };
+        }
       }
       if (del) {
         const name = del.dataset.name;
@@ -776,6 +974,7 @@ routes.admin = () => {
   $('#adm-pick').onclick = async () => {
     try { await api('POST', '/api/admin/picks'); sfx.sparkle(); location.hash = '#/picks'; } catch (err) { toast(err.message, 'err'); }
   };
+  $('#adm-pick-custom').onclick = () => openCustomPick(state.me.id, 'ti');
   $('#gift-all-form').onsubmit = async (e) => {
     e.preventDefault();
     try {
@@ -803,7 +1002,7 @@ function tutorialHTML() {
     <div class="tut-step"><div class="n">4</div><div><b>Estadísticas</b><p><b>Lanzador:</b> precisión (menos tiros fuera), potencia (más difícil de parar y menos tiempo de reacción para el portero) y calidad de lanzamiento (colocación). <b>Portero:</b> reflejos y capacidad de parada (más probabilidad de detenerlo si acierta) y reincorporación (segunda estirada).</p>
       <div class="formula">Fuera = base por altura (arriba ${s.missBase[0] * 100}% · media ${s.missBase[1] * 100}% · abajo ${s.missBase[2] * 100}%) × (110 − precisión) / 50<br>
       Parada si aciertas la zona = ${s.save.base * 100}% + 0,8%·(parada−50) + 0,4%·(reflejos−50) − 0,6%·(potencia−50) − 0,4%·(calidad−50) ± altura (escuadras −12%, abajo +5%), entre ${s.save.min * 100}% y ${s.save.max * 100}%</div></div></div>
-    <div class="tut-step"><div class="n">5</div><div><b>⚡ ¡Doble parada!</b><p>Si tu portero es <b>de oro o superior</b> y se tira al lado equivocado, hay un <b>${Math.round(s.second.chance * 100)}%</b> de probabilidad de que salga <b>¡DOBLE PARADA!</b>. Aparecen ${s.second.patternCircles} círculos numerados: tócalos en orden en ${s.second.minigameMs / 1000} segundos. Si lo consigues, tienes <b>${s.second.diveMs / 1000} segundo</b> para volver a tirarte a otro lado. Si aciertas, puedes pararlo (con un ${Math.round(s.second.saveFactor * 100)}% de la probabilidad normal).</p></div></div>
+    <div class="tut-step"><div class="n">5</div><div><b>⚡ ¡Doble parada!</b><p>Si tu portero es <b>de oro o superior</b> y se tira al lado equivocado, hay un <b>${Math.round(s.second.chance * 100)}%</b> de probabilidad de que salga <b>¡DOBLE PARADA!</b>. Aparecen ${s.second.patternCircles} círculos numerados: tócalos en orden en ${s.second.minigameMs / 1000} segundos (solo ${s.second.lowMinigameMs / 1000} si tu portero tiene menos de ${s.second.lowRecoveryBelow} de reincorporación). Si lo consigues, tienes <b>${s.second.diveMs / 1000} segundo</b> para volver a tirarte a otro lado. Si aciertas, puedes pararlo (con un ${Math.round(s.second.saveFactor * 100)}% de la probabilidad normal).</p></div></div>
     <div class="tut-step"><div class="n">6</div><div><b>Premios</b><p>Victoria: +${state.meta.economy.winReward} 🪙 · Derrota: +${state.meta.economy.lossReward} 🪙 · Abandono: 0. ${pickLevelsText()} Si te desconectas más de 30 s durante un partido, pierdes por abandono.</p></div></div>
   </div>`;
 }

@@ -7,7 +7,7 @@ import { Server } from 'socket.io';
 import * as auth from './auth.js';
 import * as game from './game.js';
 import { CARDS, CARD_BY_ID } from './cards.js';
-import { CRESTS, ECONOMY, MARKET, MATCH, PACKS, PICK, SHOT, TIERS, ZONES } from './config.js';
+import { CRESTS, ECONOMY, MARKET, MATCH, PACKS, PICK, SHOT, TIERS, TITLES, ZONES } from './config.js';
 import { createMatchManager } from './match.js';
 import { createMarket } from './market.js';
 
@@ -59,7 +59,7 @@ export function createApp({ db, rng, timing } = {}) {
   async function loadUser(req) {
     const token = auth.parseCookies(req.headers.cookie)[COOKIE];
     const user = await auth.userFromToken(db, token);
-    return user && !user.banned ? user : null;
+    return user && !game.isBanned(user) ? user : null;
   }
   const requireUser = (fn) => wrap(async (req, res) => {
     req.user = await loadUser(req);
@@ -95,7 +95,7 @@ export function createApp({ db, rng, timing } = {}) {
 
   // ---------------- Datos públicos ----------------
   app.get('/api/meta', (req, res) => {
-    res.json({ crests: CRESTS, packs: PACKS, economy: ECONOMY, tiers: TIERS, zones: ZONES, pick: PICK,
+    res.json({ crests: CRESTS, packs: PACKS, economy: ECONOMY, tiers: TIERS, titles: TITLES, zones: ZONES, pick: PICK,
       match: { kicksPerTeam: MATCH.kicksPerTeam, chooseMs: MATCH.chooseMs }, shot: SHOT, market: MARKET });
   });
   app.get('/api/cards', (req, res) => res.json({ cards: CARDS }));
@@ -147,7 +147,10 @@ export function createApp({ db, rng, timing } = {}) {
     const ok = user ? await auth.verifyPassword(password, user.pass_hash) : (await auth.hashPassword(password), false);
     await auth.recordAttempt(db, 'login', req.ip, username, ok);
     if (!ok) return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
-    if (user.banned) return res.status(403).json({ error: 'Esta cuenta está baneada' });
+    if (game.isBanned(user)) {
+      const until = user.banned_until ? ` hasta el ${new Date(user.banned_until).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}` : '';
+      return res.status(403).json({ error: `Esta cuenta está baneada${until}` });
+    }
     if (await checkAdminCode(req, username) && user.role !== 'admin') {
       [user] = await db.query(`UPDATE users SET role='admin' WHERE id=$1 RETURNING *`, [user.id]);
       await adminLog(user, 'promoción a administrador', user.username);
@@ -170,11 +173,13 @@ export function createApp({ db, rng, timing } = {}) {
     res.json({ ok: true });
   }));
 
+  // Perfil público: datos, titulares y cartas que tiene (visible para cualquier jugador).
   app.get('/api/users/:id', wrap(async (req, res) => {
-    const [u] = await db.query('SELECT id, username, crest, wins, losses, streak, best_streak, created_at FROM users WHERE id=$1 AND NOT banned',
-      [Number(req.params.id) || 0]);
+    const [u] = await db.query(`SELECT id, username, crest, role, title, wins, losses, streak, best_streak, shooter_card, keeper_card, created_at
+                                FROM users WHERE id=$1 AND ${game.ACTIVE}`, [Number(req.params.id) || 0]);
     if (!u) return res.status(404).json({ error: 'Usuario no encontrado' });
-    res.json({ user: u });
+    const collection = await game.getCollection(db, u.id);
+    res.json({ user: u, collection: collection.map((c) => ({ cardId: c.cardId, count: c.count })) });
   }));
 
   // ---------------- Colección y alineación ----------------
@@ -189,6 +194,7 @@ export function createApp({ db, rng, timing } = {}) {
 
   // ---------------- Tienda ----------------
   app.post('/api/shop/open', requireUser(async (req, res) => res.json(await game.openPack(db, req.user.id, req.body?.packId))));
+  app.post('/api/shop/auto', requireUser(async (req, res) => res.json(await game.openPacksAuto(db, req.user.id, req.body?.packId, req.body?.budget))));
 
   // ---------------- Mercado de transferibles ----------------
   app.get('/api/market', requireUser(async (req, res) => res.json({ listings: await market.search(req.user.id, req.query) })));
@@ -217,9 +223,9 @@ export function createApp({ db, rng, timing } = {}) {
 
   // ---------------- Administración ----------------
   app.get('/api/admin/users', requireAdmin(async (req, res) => {
-    const rows = await db.query(`SELECT id, username, crest, role, coins, wins, losses, streak, banned, created_at, last_seen
+    const rows = await db.query(`SELECT id, username, crest, role, title, coins, wins, losses, streak, banned, banned_until, created_at, last_seen
                                  FROM users ORDER BY id`);
-    res.json({ users: rows.map((u) => ({ ...u, online: manager.isOnline(u.id) })) });
+    res.json({ users: rows.map((u) => ({ ...u, banned: game.isBanned(u), online: manager.isOnline(u.id) })) });
   }));
   app.get('/api/admin/logs', requireAdmin(async (req, res) => {
     res.json({ logs: await db.query('SELECT * FROM admin_logs ORDER BY id DESC LIMIT 100') });
@@ -227,15 +233,19 @@ export function createApp({ db, rng, timing } = {}) {
   app.post('/api/admin/users/:id/ban', requireAdmin(async (req, res) => {
     const id = Number(req.params.id) || 0;
     const banned = req.body?.banned !== false;
+    // minutes: duración del baneo (vacío o 0 = para siempre)
+    const minutes = req.body?.minutes == null || req.body.minutes === '' ? 0 : Number(req.body.minutes);
+    if (!Number.isInteger(minutes) || minutes < 0 || minutes > 525_600 * 10) return res.status(400).json({ error: 'Duración no válida' });
     if (id === req.user.id) return res.status(400).json({ error: 'No puedes banearte a ti mismo' });
-    const [u] = await db.query('UPDATE users SET banned=$2 WHERE id=$1 RETURNING id, username, banned', [id, banned]);
+    const until = banned && minutes ? new Date(Date.now() + minutes * 60_000) : null;
+    const [u] = await db.query('UPDATE users SET banned=$2, banned_until=$3 WHERE id=$1 RETURNING id, username, banned, banned_until', [id, banned, until]);
     if (!u) return res.status(404).json({ error: 'Usuario no encontrado' });
     if (banned) {
       await db.query('DELETE FROM sessions WHERE user_id=$1', [id]);
       await manager.kickUser(id, 'cuenta baneada');
       io.in(`u:${id}`).disconnectSockets(true);
     }
-    await adminLog(req.user, banned ? 'banear' : 'desbanear', u.username, { id });
+    await adminLog(req.user, banned ? (minutes ? `banear ${minutes} min` : 'banear') : 'desbanear', u.username, { id, until });
     res.json({ user: u });
   }));
   app.delete('/api/admin/users/:id', requireAdmin(async (req, res) => {
@@ -267,6 +277,54 @@ export function createApp({ db, rng, timing } = {}) {
     res.json({ coins: u.coins });
   }));
 
+  // Dar o quitar el rol de administrador
+  app.post('/api/admin/users/:id/role', requireAdmin(async (req, res) => {
+    const id = Number(req.params.id) || 0;
+    const role = req.body?.role === 'admin' ? 'admin' : 'user';
+    if (id === req.user.id) return res.status(400).json({ error: 'No puedes cambiar tu propio rol' });
+    const [u] = await db.query('UPDATE users SET role=$2 WHERE id=$1 RETURNING id, username, role', [id, role]);
+    if (!u) return res.status(404).json({ error: 'Usuario no encontrado' });
+    await adminLog(req.user, role === 'admin' ? 'dar admin' : 'quitar admin', u.username, { id });
+    io.in(`u:${id}`).disconnectSockets(true); // al reconectar ve su nuevo rol
+    res.json({ user: u });
+  }));
+  // Monedas de cualquier jugador: añadir, quitar (cantidad negativa) o fijar
+  app.post('/api/admin/users/:id/coins', requireAdmin(async (req, res) => {
+    const id = Number(req.params.id) || 0;
+    const { mode, amount } = req.body || {};
+    const n = Number(amount);
+    if (!Number.isInteger(n) || Math.abs(n) > ECONOMY.adminMaxCoinsAdjust) return res.status(400).json({ error: 'Cantidad no válida' });
+    if (!['add', 'set'].includes(mode)) return res.status(400).json({ error: 'Modo no válido' });
+    if (mode === 'set' && n < 0) return res.status(400).json({ error: 'Las monedas no pueden ser negativas' });
+    const [u] = mode === 'set'
+      ? await db.query('UPDATE users SET coins=$2 WHERE id=$1 RETURNING id, username, coins', [id, n])
+      : await db.query('UPDATE users SET coins=GREATEST(0, coins + $2) WHERE id=$1 RETURNING id, username, coins', [id, n]);
+    if (!u) return res.status(404).json({ error: 'Usuario no encontrado' });
+    await adminLog(req.user, mode === 'set' ? 'fijar monedas' : n < 0 ? 'quitar monedas' : 'añadir monedas', u.username, { amount: n, result: u.coins });
+    io.to(`u:${id}`).emit('coins', { coins: u.coins });
+    res.json({ coins: u.coins });
+  }));
+  // Título junto al nombre (OG, LEYENDA…). Vacío lo quita.
+  app.post('/api/admin/users/:id/title', requireAdmin(async (req, res) => {
+    const id = Number(req.params.id) || 0;
+    const title = req.body?.title ? String(req.body.title) : null;
+    if (title && !TITLES[title]) return res.status(400).json({ error: 'Título no válido' });
+    const [u] = await db.query('UPDATE users SET title=$2 WHERE id=$1 RETURNING id, username, title', [id, title]);
+    if (!u) return res.status(404).json({ error: 'Usuario no encontrado' });
+    await adminLog(req.user, title ? `título ${TITLES[title].name}` : 'quitar título', u.username, { id });
+    io.in(`u:${id}`).disconnectSockets(true); // al reconectar, sus rivales ven el título
+    res.json({ user: u });
+  }));
+  // Player pick con las cartas que elija el administrador, para él o para otro jugador
+  app.post('/api/admin/users/:id/pick', requireAdmin(async (req, res) => {
+    const [u] = await db.query('SELECT id, username FROM users WHERE id=$1', [Number(req.params.id) || 0]);
+    if (!u) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const pickId = await game.createPick(db, u.id, req.body?.cardIds ?? []);
+    await adminLog(req.user, 'player pick personalizado', u.username, { pick: pickId, cards: req.body.cardIds });
+    if (u.id !== req.user.id) io.to(`u:${u.id}`).emit('gift', { from: req.user.username, coins: 0, card: null, pick: true });
+    res.json({ ok: true, pickId });
+  }));
+
   // Regalos del administrador: monedas y/o una carta a un jugador o a todos los conectados.
   function parseGift(body) {
     const coins = body?.coins == null || body.coins === '' ? 0 : Number(body.coins);
@@ -294,9 +352,9 @@ export function createApp({ db, rng, timing } = {}) {
   }));
   app.post('/api/admin/users/:id/gift', requireAdmin(async (req, res) => {
     const gift = parseGift(req.body);
-    const [u] = await db.query('SELECT id, username, banned FROM users WHERE id=$1', [Number(req.params.id) || 0]);
+    const [u] = await db.query('SELECT id, username, banned, banned_until FROM users WHERE id=$1', [Number(req.params.id) || 0]);
     if (!u) return res.status(404).json({ error: 'Usuario no encontrado' });
-    if (u.banned) return res.status(400).json({ error: 'No puedes regalar a una cuenta baneada' });
+    if (game.isBanned(u)) return res.status(400).json({ error: 'No puedes regalar a una cuenta baneada' });
     await giveGift(req.user, u, gift);
     res.json({ ok: true, count: 1 });
   }));
@@ -304,7 +362,7 @@ export function createApp({ db, rng, timing } = {}) {
     const gift = parseGift(req.body);
     const ids = manager.onlineIds().filter((id) => id !== req.user.id);
     if (!ids.length) return res.status(400).json({ error: 'No hay otros jugadores conectados' });
-    const users = await db.query('SELECT id, username FROM users WHERE id = ANY($1::int[]) AND NOT banned', [ids]);
+    const users = await db.query(`SELECT id, username FROM users WHERE id = ANY($1::int[]) AND ${game.ACTIVE}`, [ids]);
     for (const u of users) await giveGift(req.user, u, gift);
     res.json({ ok: true, count: users.length });
   }));
@@ -320,8 +378,8 @@ export function createApp({ db, rng, timing } = {}) {
     try {
       const token = auth.parseCookies(socket.handshake.headers.cookie)[COOKIE];
       const user = await auth.userFromToken(db, token);
-      if (!user || user.banned) return next(new Error('no-auth'));
-      socket.data.user = { id: user.id, username: user.username, crest: user.crest, role: user.role };
+      if (!user || game.isBanned(user)) return next(new Error('no-auth'));
+      socket.data.user = { id: user.id, username: user.username, crest: user.crest, role: user.role, title: user.title };
       next();
     } catch (e) { next(new Error('no-auth')); }
   });

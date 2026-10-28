@@ -312,6 +312,36 @@ test('administración: código validado en servidor, permisos y acciones', async
   await admin.post(`/api/admin/users/${user.user.id}/ban`, { banned: false });
   assert.equal((await new Agent(srv.base).post('/api/login', { username: user.username, password: 'secreta123' })).status, 200);
 
+  // Baneo temporal: no entra mientras dura y vuelve a entrar al caducar
+  assert.equal((await admin.post(`/api/admin/users/${user.user.id}/ban`, { banned: true, minutes: 60 })).status, 200);
+  assert.equal((await new Agent(srv.base).post('/api/login', { username: user.username, password: 'secreta123' })).status, 403);
+  await srv.db.query(`UPDATE users SET banned_until = now() - interval '1 minute' WHERE id=$1`, [user.user.id]);
+  assert.equal((await new Agent(srv.base).post('/api/login', { username: user.username, password: 'secreta123' })).status, 200);
+  await admin.post(`/api/admin/users/${user.user.id}/ban`, { banned: false });
+  const ua = new Agent(srv.base);
+  assert.equal((await ua.post('/api/login', { username: user.username, password: 'secreta123' })).status, 200);
+
+  // Quitar monedas, título, dar admin y player pick con cartas elegidas
+  await srv.db.query('UPDATE users SET coins=1000 WHERE id=$1', [user.user.id]);
+  assert.equal((await admin.post(`/api/admin/users/${user.user.id}/coins`, { mode: 'add', amount: -400 })).data.coins, 600);
+  assert.equal((await admin.post(`/api/admin/users/${user.user.id}/coins`, { mode: 'add', amount: -5000 })).data.coins, 0);
+  assert.equal((await admin.post(`/api/admin/users/${user.user.id}/title`, { title: 'og' })).status, 200);
+  assert.equal((await admin.post(`/api/admin/users/${user.user.id}/title`, { title: 'nope' })).status, 400);
+  const pub = (await ua.get(`/api/users/${user.user.id}`)).data;
+  assert.equal(pub.user.title, 'og');
+  assert.ok(Array.isArray(pub.collection));
+  const lb = (await ua.get('/api/leaderboard')).data.rows.find((r) => r.id === admin.user.id);
+  assert.equal(lb.role, 'admin');
+  const cp = await admin.post(`/api/admin/users/${user.user.id}/pick`, { cardIds: ['goat-j-martinet', 'j-pedri'] });
+  assert.equal(cp.status, 200);
+  const custom = (await srv.db.query('SELECT options FROM player_picks WHERE id=$1', [cp.data.pickId]))[0];
+  assert.deepEqual(JSON.parse(custom.options), ['goat-j-martinet', 'j-pedri']);
+  assert.equal((await admin.post(`/api/admin/users/${user.user.id}/pick`, { cardIds: [] })).status, 400);
+  assert.equal((await ua.post(`/api/admin/users/${user.user.id}/role`, { role: 'admin' })).status, 403);
+  assert.equal((await admin.post(`/api/admin/users/${user.user.id}/role`, { role: 'admin' })).status, 200);
+  assert.equal((await ua.get('/api/me')).data.user.role, 'admin');
+  assert.equal((await admin.post(`/api/admin/users/${admin.user.id}/role`, { role: 'user' })).status, 400);
+
   // Borrar exige confirmación con el nombre exacto
   assert.equal((await admin.del(`/api/admin/users/${user.user.id}`, {})).status, 400);
   assert.equal((await admin.del(`/api/admin/users/${user.user.id}`, { confirm: user.username })).status, 200);
@@ -386,6 +416,23 @@ test('sobre Mega: cuesta 5 millones y trae 7 lanzadores y 3 porteros distintos',
   assert.equal(new Set(r.data.cards.map((c) => c.id)).size, 10, 'sin cartas repetidas');
   assert.ok(new Set(r.data.cards.filter((c) => c.type === 'jugador').map((c) => c.position)).size >= 4, 'posiciones variadas');
   assert.equal(r.data.coins, 0);
+});
+
+test('compra automática: gasta el presupuesto en sobres seguidos', async () => {
+  const a = await newUser(srv, 'auto');
+  await srv.db.query('UPDATE users SET coins=$2 WHERE id=$1', [a.user.id, 100_000]);
+  const r = await a.post('/api/shop/auto', { packId: 'plata', budget: 10_000 });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.opened, 6); // 6 × 1500 = 9000
+  assert.equal(r.data.spent, 9000);
+  assert.equal(r.data.coins, 91_000);
+  assert.equal(r.data.packs.flat().length, 12);
+  // Si el presupuesto supera el saldo, para cuando se acaban las monedas
+  await srv.db.query('UPDATE users SET coins=$2 WHERE id=$1', [a.user.id, 3200]);
+  const r2 = await a.post('/api/shop/auto', { packId: 'plata', budget: 100_000 });
+  assert.equal(r2.data.opened, 2);
+  assert.equal(r2.data.coins, 200);
+  assert.equal((await a.post('/api/shop/auto', { packId: 'plata', budget: 100 })).status, 400);
 });
 
 test('GOAT: 4 lanzadores y 4 porteros con 99 de media', async () => {

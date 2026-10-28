@@ -115,12 +115,23 @@ export const SHOT = {
     chance: 0.40,         // probabilidad de "¡DOBLE PARADA!" si un portero bueno falla el lado
     patternCircles: 5,    // círculos del minijuego (tocarlos en orden)
     minigameMs: 6_000,    // tiempo para completar el patrón
+    lowRecoveryBelow: 80, // porteros con reincorporación por debajo de esto…
+    lowMinigameMs: 3_000, // …solo tienen 3 segundos
     diveMs: 1_000,        // si lo completas: 1 segundo para volver a tirarte
     saveFactor: 0.65,     // la parada en segunda estirada es más difícil
   },
 };
 
 export const ZONES = ['Arriba izquierda', 'Arriba derecha', 'Media izquierda', 'Media derecha', 'Abajo izquierda', 'Abajo derecha'];
+
+// Títulos que el administrador puede poner a un jugador (se ven junto a su nombre para todos).
+export const TITLES = {
+  og:      { name: 'OG' },
+  leyenda: { name: 'LEYENDA' },
+  rey:     { name: 'REY' },
+  vip:     { name: 'VIP' },
+  crack:   { name: 'CRACK' },
+};
 
 // Escudos disponibles al registrarse (el cliente los dibuja en SVG).
 export const CRESTS = [

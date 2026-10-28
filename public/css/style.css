@@ -539,3 +539,43 @@ table.table { width: 100%; border-collapse: collapse; }
 .opening .reveal-card .fcard.t-goat { animation: cardFloat 2.4s ease-in-out infinite, glowGoat 1.6s ease-in-out infinite; }
 .opening.many .summary { gap: 10px; max-height: 70vh; overflow-y: auto; }
 .opening.many .summary .fcard { --w: min(140px, 28vw); }
+
+/* Nombres con distintivos: admin en morado y títulos de colores */
+.uname.is-admin { color: #b46bff; text-shadow: 0 0 10px rgba(180, 107, 255, 0.7); }
+.ubadge { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 0.62em; font-weight: 900;
+  letter-spacing: 0.08em; vertical-align: middle; line-height: 1.6; font-family: inherit; text-shadow: none; }
+.ubadge.b-admin { background: linear-gradient(135deg, #7b2ff7, #b46bff); color: #fff; box-shadow: 0 0 10px rgba(150, 80, 255, 0.7); }
+.ubadge.b-title { color: #fff; background: linear-gradient(90deg, #ff0040, #ff8a00, #ffe600, #00e676, #00b0ff, #d500f9, #ff0040);
+  background-size: 300% 100%; animation: titleRainbow 3s linear infinite; box-shadow: 0 0 12px rgba(255, 255, 255, 0.45);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7); }
+.ubadge.t-leyenda { background: linear-gradient(90deg, #fff3b0, #d4af37, #fff, #b8892a, #fff3b0); background-size: 300% 100%; color: #3a2a00; text-shadow: none; }
+.ubadge.t-rey { background: linear-gradient(90deg, #ffd54a, #ff2a00, #ffd54a, #ff8a00); background-size: 300% 100%; }
+.ubadge.t-vip { background: linear-gradient(90deg, #00e5ff, #2f7bff, #d500f9, #00e5ff); background-size: 300% 100%; }
+.ubadge.t-crack { background: linear-gradient(90deg, #00e676, #00b0ff, #ffe600, #00e676); background-size: 300% 100%; color: #04210f; text-shadow: none; }
+@keyframes titleRainbow { from { background-position: 0% 0; } to { background-position: 300% 0; } }
+a.who { color: inherit; text-decoration: none; } a.who:hover .uname { text-decoration: underline; }
+.title-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.title-grid .ubadge { font-size: 0.9rem; margin: 0; }
+
+/* Perfil con las cartas al lado */
+.profile-top { display: grid; grid-template-columns: minmax(260px, 1fr) 2fr; gap: 16px; align-items: start; }
+@media (max-width: 800px) { .profile-top { grid-template-columns: 1fr; } }
+.profile-cards { display: flex; flex-wrap: wrap; gap: 10px; max-height: 520px; overflow-y: auto; padding: 4px; }
+.profile-cards .fcard { --w: 110px; }
+
+/* Selector del player pick personalizado */
+.pick-picker { display: grid; gap: 8px; }
+.pick-picker select { width: 100%; }
+.pp-chosen { display: flex; flex-wrap: wrap; gap: 12px; }
+.pp-item { display: grid; gap: 6px; justify-items: center; }
+.pp-item .fcard { --w: 120px; }
+
+/* Compra automática */
+.auto-cards { display: flex; flex-wrap: wrap; gap: 10px; max-height: 60vh; overflow-y: auto; padding: 6px 2px; margin-top: 10px; }
+.auto-card { display: grid; gap: 4px; justify-items: center; font-size: 0.7rem; }
+.auto-card .fcard { --w: 100px; }
+.auto-card .label-new, .auto-card .label-dup { font-weight: 800; padding: 1px 8px; border-radius: 999px; letter-spacing: 0.06em; }
+.auto-card .label-new { background: var(--accent); color: #031a0b; }
+.auto-card .label-dup { background: rgba(255,255,255,0.15); }
+.me-name .ubadge { display: none; }
+.ubadge.b-title { font-size: 0.72em; padding: 2px 9px; }

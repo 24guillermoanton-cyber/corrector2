@@ -37,6 +37,12 @@ export function saveChance(shooter, keeper, zone, power) {
 }
 
 // Doble parada: solo porteros buenos (oro o superior), y aun así con una probabilidad (40 %).
+// Tiempo del minijuego de la doble parada: menos si el portero tiene mala reincorporación.
+export function minigameMsFor(keeper) {
+  const s = SHOT.second;
+  return (keeper?.stats?.reincorporacion ?? 99) < s.lowRecoveryBelow ? s.lowMinigameMs : s.minigameMs;
+}
+
 export function canDoubleSave(keeper) {
   return SHOT.second.tiers.includes(keeper.tier);
 }
@@ -93,7 +99,7 @@ export function createMatchManager({ io, db, rng = Math.random, timing = MATCH }
     const players = room.order.map((id) => {
       const p = room.players[id];
       return p && {
-        id: p.id, name: p.name, crest: p.crest, shooter: cardView(p.shooter), keeper: cardView(p.keeper),
+        id: p.id, name: p.name, crest: p.crest, role: p.role, title: p.title, shooter: cardView(p.shooter), keeper: cardView(p.keeper),
         connected: isOnline(p.id), disconnectedLeftMs: p.discDeadline ? Math.max(0, p.discDeadline - now()) : null,
       };
     });
@@ -112,7 +118,7 @@ export function createMatchManager({ io, db, rng = Math.random, timing = MATCH }
       if (c.phase === 'second') {
         cur.firstDive = c.dive;
         cur.windowMs = c.windowMs;
-        cur.minigameMs = T.minigameMs ?? SHOT.second.minigameMs;
+        cur.minigameMs = c.minigameMs;
         cur.diveMs = T.diveMs ?? SHOT.second.diveMs;
         cur.circles = SHOT.second.patternCircles;
         cur.introMs = T.secondPhaseIntroMs;
@@ -143,7 +149,7 @@ export function createMatchManager({ io, db, rng = Math.random, timing = MATCH }
     if (!lineup) throw new game.GameError('Necesitas un lanzador y un portero en tu alineación. ¡Abre un sobre en la tienda!');
     const room = {
       code: newCode(), status: 'waiting', createdAt: now(), order: [user.id, null], kicks: [], cur: null,
-      players: { [user.id]: { id: user.id, name: user.username, crest: user.crest } },
+      players: { [user.id]: { id: user.id, name: user.username, crest: user.crest, role: user.role, title: user.title } },
     };
     rooms.set(room.code, room);
     userRoom.set(user.id, room.code);
@@ -164,7 +170,7 @@ export function createMatchManager({ io, db, rng = Math.random, timing = MATCH }
     if (!lineup) throw new game.GameError('Necesitas un lanzador y un portero en tu alineación. ¡Abre un sobre en la tienda!');
     if (room.status !== 'waiting' || room.order[1]) throw new game.GameError('La sala ya está completa');
     room.order[1] = user.id;
-    room.players[user.id] = { id: user.id, name: user.username, crest: user.crest };
+    room.players[user.id] = { id: user.id, name: user.username, crest: user.crest, role: user.role, title: user.title };
     userRoom.set(user.id, code);
     await startMatch(room);
     return code;
@@ -270,7 +276,8 @@ export function createMatchManager({ io, db, rng = Math.random, timing = MATCH }
     if (!canDoubleSave(keeper) || random() >= SHOT.second.chance) return finishKick(room, 'gol');
     // Doble parada: el portero hace el minijuego y, si lo completa, tiene 1 s para volver a tirarse.
     // Solo el portero puede actuar; la zona del disparo sigue oculta.
-    const windowMs = (T.minigameMs ?? SHOT.second.minigameMs) + (T.diveMs ?? SHOT.second.diveMs);
+    c.minigameMs = T.minigameMs ?? minigameMsFor(keeper);
+    const windowMs = c.minigameMs + (T.diveMs ?? SHOT.second.diveMs);
     c.phase = 'second';
     c.windowMs = windowMs;
     c.deadline = now() + T.secondPhaseIntroMs + windowMs + T.networkGraceMs;
